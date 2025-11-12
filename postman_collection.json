@@ -1,0 +1,885 @@
+{
+  "info": {
+    "name": "API Consultorio - Medical Clinic Management",
+    "description": "Complete API collection for medical clinic management system",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken', response.data.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@consultorio.com\",\n  \"password\": \"Admin123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"your-refresh-token\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "user-id-here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dr. María López\",\n  \"email\": \"maria@consultorio.com\",\n  \"role\": \"doctor\",\n  \"consultorioId\": \"consultorio-id-here\",\n  \"password\": \"SecurePass123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            }
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dr. María López Sánchez\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "user-id-here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "user-id-here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Doctors",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/doctors",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "doctors"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Consultorios",
+      "item": [
+        {
+          "name": "Get All Consultorios",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/consultorios?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["consultorios"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Consultorio by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/consultorios/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["consultorios", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "consultorio-id-here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Consultorio Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/consultorios/:id/resumen",
+              "host": ["{{baseUrl}}"],
+              "path": ["consultorios", ":id", "resumen"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "consultorio-id-here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Consultorio",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Clínica San Rafael\",\n  \"address\": \"Av. Juárez 123\",\n  \"phone\": \"+52 555 1234567\",\n  \"description\": \"Consultorio médico general\",\n  \"openHour\": \"08:00\",\n  \"closeHour\": \"18:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/consultorios",
+              "host": ["{{baseUrl}}"],
+              "path": ["consultorios"]
+            }
+          }
+        },
+        {
+          "name": "Update Consultorio",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+52 555 9876543\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/consultorios/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["consultorios", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "consultorio-id-here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Consultorio",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/consultorios/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["consultorios", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "consultorio-id-here"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pacientes",
+      "item": [
+        {
+          "name": "Get All Pacientes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes?page=1&limit=10&search=",
+              "host": ["{{baseUrl}}"],
+              "path": ["pacientes"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Pacientes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes/search?q=carlos",
+              "host": ["{{baseUrl}}"],
+              "path": ["pacientes", "search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "carlos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Paciente by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["pacientes", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "paciente-id-here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Paciente History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes/:id/historial",
+              "host": ["{{baseUrl}}"],
+              "path": ["pacientes", ":id", "historial"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "paciente-id-here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Paciente",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Carlos Rodríguez López\",\n  \"age\": 35,\n  \"gender\": \"masculino\",\n  \"phone\": \"+52 555 1112233\",\n  \"email\": \"carlos@example.com\",\n  \"address\": \"Calle Luna 789\",\n  \"medicalHistory\": \"Hipertensión controlada\",\n  \"allergies\": \"Penicilina\",\n  \"notes\": \"Paciente regular\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pacientes",
+              "host": ["{{baseUrl}}"],
+              "path": ["pacientes"]
+            }
+          }
+        },
+        {
+          "name": "Update Paciente",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+52 555 9998888\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pacientes/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["pacientes", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "paciente-id-here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Paciente",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["pacientes", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "paciente-id-here"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Citas",
+      "item": [
+        {
+          "name": "Get All Citas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/citas?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["citas"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "estado",
+                  "value": "pendiente",
+                  "disabled": true
+                },
+                {
+                  "key": "doctorId",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Calendar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/citas/calendario?month=11&year=2024",
+              "host": ["{{baseUrl}}"],
+              "path": ["citas", "calendario"],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "11"
+                },
+                {
+                  "key": "year",
+                  "value": "2024"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Cita by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/citas/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["citas", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "cita-id-here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Cita",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pacienteId\": \"paciente-id-here\",\n  \"doctorId\": \"doctor-id-here\",\n  \"consultorioId\": \"consultorio-id-here\",\n  \"date\": \"2024-11-15\",\n  \"time\": \"10:00\",\n  \"motivo\": \"Consulta general\",\n  \"costo\": 500,\n  \"notas\": \"Primera consulta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/citas",
+              "host": ["{{baseUrl}}"],
+              "path": ["citas"]
+            }
+          }
+        },
+        {
+          "name": "Update Cita",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"diagnostico\": \"Gripe común\",\n  \"tratamiento\": \"Paracetamol cada 8 horas\",\n  \"estado\": \"completada\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/citas/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["citas", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "cita-id-here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel Cita",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/citas/:id/cancelar",
+              "host": ["{{baseUrl}}"],
+              "path": ["citas", ":id", "cancelar"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "cita-id-here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Cita",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/citas/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["citas", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "cita-id-here"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pagos",
+      "item": [
+        {
+          "name": "Get All Pagos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pagos?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["pagos"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Income Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pagos/ingresos?dateFrom=2024-01-01&dateTo=2024-12-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["pagos", "ingresos"],
+              "query": [
+                {
+                  "key": "dateFrom",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "dateTo",
+                  "value": "2024-12-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Pago by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pagos/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["pagos", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "pago-id-here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Pago",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"citaId\": \"cita-id-here\",\n  \"monto\": 500,\n  \"metodo\": \"efectivo\",\n  \"estatus\": \"pagado\",\n  \"comentarios\": \"Pago en efectivo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pagos",
+              "host": ["{{baseUrl}}"],
+              "path": ["pagos"]
+            }
+          }
+        },
+        {
+          "name": "Update Pago",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estatus\": \"pagado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pagos/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["pagos", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "pago-id-here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Pago",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pagos/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["pagos", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "pago-id-here"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reportes",
+      "item": [
+        {
+          "name": "Dashboard Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["reportes", "dashboard"]
+            }
+          }
+        },
+        {
+          "name": "Citas Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/citas?dateFrom=2024-01-01&dateTo=2024-12-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["reportes", "citas"],
+              "query": [
+                {
+                  "key": "dateFrom",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "dateTo",
+                  "value": "2024-12-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ingresos Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/ingresos?dateFrom=2024-01-01&dateTo=2024-12-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["reportes", "ingresos"],
+              "query": [
+                {
+                  "key": "dateFrom",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "dateTo",
+                  "value": "2024-12-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Pacientes Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/pacientes",
+              "host": ["{{baseUrl}}"],
+              "path": ["reportes", "pacientes"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

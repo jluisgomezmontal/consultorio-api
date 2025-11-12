@@ -1,0 +1,147 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  doctor
+  recepcionista
+}
+
+enum Gender {
+  masculino
+  femenino
+  otro
+}
+
+enum EstadoCita {
+  pendiente
+  confirmada
+  completada
+  cancelada
+}
+
+enum MetodoPago {
+  efectivo
+  tarjeta
+  transferencia
+}
+
+enum EstatusPago {
+  pagado
+  pendiente
+}
+
+model Consultorio {
+  id          String   @id @default(uuid())
+  name        String
+  address     String?
+  phone       String?
+  description String?
+  openHour    String?
+  closeHour   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users User[]
+  citas Cita[]
+
+  @@index([name])
+  @@map("consultorios")
+}
+
+model User {
+  id             String   @id @default(uuid())
+  name           String
+  email          String   @unique
+  role           Role     @default(recepcionista)
+  consultorioId  String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  consultorio Consultorio @relation(fields: [consultorioId], references: [id], onDelete: Cascade)
+  citas       Cita[]
+
+  @@index([email])
+  @@index([consultorioId])
+  @@index([role])
+  @@map("users")
+}
+
+model Paciente {
+  id             String   @id @default(uuid())
+  fullName       String
+  age            Int?
+  gender         Gender?
+  phone          String?
+  email          String?
+  address        String?
+  medicalHistory String?  @db.Text
+  allergies      String?  @db.Text
+  notes          String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  citas Cita[]
+
+  @@index([fullName])
+  @@index([phone])
+  @@index([email])
+  @@map("pacientes")
+}
+
+model Cita {
+  id             String      @id @default(uuid())
+  pacienteId     String
+  doctorId       String
+  consultorioId  String
+  date           DateTime
+  time           String
+  motivo         String?
+  diagnostico    String?     @db.Text
+  tratamiento    String?     @db.Text
+  estado         EstadoCita  @default(pendiente)
+  costo          Float?
+  notas          String?     @db.Text
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  paciente    Paciente    @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  doctor      User        @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  consultorio Consultorio @relation(fields: [consultorioId], references: [id], onDelete: Cascade)
+  pagos       Pago[]
+
+  @@index([pacienteId])
+  @@index([doctorId])
+  @@index([consultorioId])
+  @@index([date])
+  @@index([estado])
+  @@map("citas")
+}
+
+model Pago {
+  id          String       @id @default(uuid())
+  citaId      String
+  monto       Float
+  metodo      MetodoPago
+  fechaPago   DateTime     @default(now())
+  estatus     EstatusPago  @default(pendiente)
+  comentarios String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  cita Cita @relation(fields: [citaId], references: [id], onDelete: Cascade)
+
+  @@index([citaId])
+  @@index([estatus])
+  @@index([fechaPago])
+  @@map("pagos")
+}
