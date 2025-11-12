@@ -8,18 +8,61 @@ class CitaService {
   async getAllCitas(filters = {}, page = 1, limit = 10) {
     const skip = (page - 1) * limit;
 
-    const where = {};
+    const andConditions = [];
 
-    if (filters.doctorId) where.doctorId = filters.doctorId;
-    if (filters.pacienteId) where.pacienteId = filters.pacienteId;
-    if (filters.consultorioId) where.consultorioId = filters.consultorioId;
-    if (filters.estado) where.estado = filters.estado;
+    if (filters.doctorId) {
+      andConditions.push({ doctorId: filters.doctorId });
+    }
+
+    if (filters.pacienteId) {
+      andConditions.push({ pacienteId: filters.pacienteId });
+    }
+
+    if (filters.consultorioId) {
+      andConditions.push({ consultorioId: filters.consultorioId });
+    }
+
+    if (filters.estado) {
+      andConditions.push({ estado: filters.estado });
+    }
 
     if (filters.dateFrom || filters.dateTo) {
-      where.date = {};
-      if (filters.dateFrom) where.date.gte = new Date(filters.dateFrom);
-      if (filters.dateTo) where.date.lte = new Date(filters.dateTo);
+      const dateFilter = {};
+      if (filters.dateFrom) {
+        dateFilter.gte = new Date(filters.dateFrom);
+      }
+      if (filters.dateTo) {
+        dateFilter.lte = new Date(filters.dateTo);
+      }
+      andConditions.push({ date: dateFilter });
     }
+
+    if (filters.search) {
+      const searchTerm = filters.search.trim();
+      if (searchTerm.length > 0) {
+        const textSearch = {
+          contains: searchTerm,
+          mode: 'insensitive',
+        };
+
+        andConditions.push({
+          OR: [
+            { paciente: { fullName: textSearch } },
+            { paciente: { phone: textSearch } },
+            { paciente: { email: textSearch } },
+            { doctor: { name: textSearch } },
+            { doctor: { email: textSearch } },
+            { consultorio: { name: textSearch } },
+            { motivo: textSearch },
+            { diagnostico: textSearch },
+            { tratamiento: textSearch },
+            { notas: textSearch },
+          ],
+        });
+      }
+    }
+
+    const where = andConditions.length > 0 ? { AND: andConditions } : {};
 
     const [citas, total] = await Promise.all([
       prisma.cita.findMany({

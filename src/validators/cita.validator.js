@@ -47,6 +47,7 @@ export const getCitaSchema = z.object({
 
 export const listCitasSchema = z.object({
   query: z.object({
+    search: z.string().trim().optional(),
     doctorId: z.string().uuid().optional(),
     pacienteId: z.string().uuid().optional(),
     consultorioId: z.string().uuid().optional(),

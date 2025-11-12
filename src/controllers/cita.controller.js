@@ -10,6 +10,7 @@ class CitaController {
       const {
         page = 1,
         limit = 10,
+        search,
         doctorId,
         pacienteId,
         consultorioId,
@@ -19,6 +20,7 @@ class CitaController {
       } = req.query;
 
       const filters = {
+        search,
         doctorId,
         pacienteId,
         consultorioId,

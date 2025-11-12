@@ -17,52 +17,61 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+async function ensureConsultorio(data) {
+  const existing = await prisma.consultorio.findFirst({ where: { name: data.name } });
+  if (existing) {
+    return prisma.consultorio.update({
+      where: { id: existing.id },
+      data: {
+        address: data.address,
+        phone: data.phone,
+        description: data.description,
+        openHour: data.openHour,
+        closeHour: data.closeHour,
+      },
+    });
+  }
+  return prisma.consultorio.create({ data });
+}
+
 async function main() {
   console.log('🌱 Starting seed...');
 
   // Create consultorios
-  const consultorio1 = await prisma.consultorio.create({
-    data: {
-      name: 'Consultorio Médico San José',
-      address: 'Av. Principal 123, Ciudad',
-      phone: '+52 555 1234567',
-      description: 'Consultorio médico general',
-      openHour: '08:00',
-      closeHour: '18:00',
-    },
+  const consultorio1 = await ensureConsultorio({
+    name: 'Consultorio Médico San José',
+    address: 'Av. Principal 123, Ciudad',
+    phone: '+52 555 1234567',
+    description: 'Consultorio médico general',
+    openHour: '08:00',
+    closeHour: '18:00',
   });
 
-  const consultorio2 = await prisma.consultorio.create({
-    data: {
-      name: 'Clínica Familiar Guadalupe',
-      address: 'Calle Reforma 456, Colonia Centro',
-      phone: '+52 555 7654321',
-      description: 'Atención médica familiar',
-      openHour: '09:00',
-      closeHour: '20:00',
-    },
+  const consultorio2 = await ensureConsultorio({
+    name: 'Clínica Familiar Guadalupe',
+    address: 'Calle Reforma 456, Colonia Centro',
+    phone: '+52 555 7654321',
+    description: 'Atención médica familiar',
+    openHour: '09:00',
+    closeHour: '20:00',
   });
 
-  const consultorio3 = await prisma.consultorio.create({
-    data: {
-      name: 'Centro Médico Los Arcos',
-      address: 'Av. Insurgentes Sur 1500, Ciudad',
-      phone: '+52 555 9876543',
-      description: 'Especialidades médicas y diagnósticos',
-      openHour: '07:00',
-      closeHour: '21:00',
-    },
+  const consultorio3 = await ensureConsultorio({
+    name: 'Centro Médico Los Arcos',
+    address: 'Av. Insurgentes Sur 1500, Ciudad',
+    phone: '+52 555 9876543',
+    description: 'Especialidades médicas y diagnósticos',
+    openHour: '07:00',
+    closeHour: '21:00',
   });
 
-  const consultorio4 = await prisma.consultorio.create({
-    data: {
-      name: 'MediCare Especialistas',
-      address: 'Blvd. Valle Dorado 200, Zona Norte',
-      phone: '+52 555 2468101',
-      description: 'Consultas de especialistas y terapias',
-      openHour: '10:00',
-      closeHour: '19:00',
-    },
+  const consultorio4 = await ensureConsultorio({
+    name: 'MediCare Especialistas',
+    address: 'Blvd. Valle Dorado 200, Zona Norte',
+    phone: '+52 555 2468101',
+    description: 'Consultas de especialistas y terapias',
+    openHour: '10:00',
+    closeHour: '19:00',
   });
 
   console.log('✅ Consultorios created');
@@ -76,74 +85,94 @@ async function main() {
   let doctorLosArcos;
   let doctorMediCare;
 
-  const { data: adminAuthData, error: adminAuthError } = await supabaseAdmin.auth.admin.createUser({
+  const { error: adminAuthError } = await supabaseAdmin.auth.admin.createUser({
     email: adminEmail,
     password: adminPassword,
     email_confirm: true,
   });
 
   if (adminAuthError) {
-    console.error('Error creating admin auth user:', adminAuthError);
-  } else {
-    // Create admin user in database
-    const admin = await prisma.user.create({
-      data: {
-        email: adminEmail,
-        name: 'Administrador Principal',
-        role: 'admin',
-        consultorioId: consultorio1.id,
-      },
-    });
-    console.log('✅ Admin user created:', adminEmail, '/', adminPassword);
+    console.warn('Warning creating admin auth user:', adminAuthError.message ?? adminAuthError);
   }
+
+  await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: {
+      name: 'Administrador Principal',
+      role: 'admin',
+      consultorioId: consultorio1.id,
+    },
+    create: {
+      email: adminEmail,
+      name: 'Administrador Principal',
+      role: 'admin',
+      consultorioId: consultorio1.id,
+    },
+  });
+
+  console.log('✅ Admin user ready:', adminEmail, '/', adminPassword);
 
   // Create doctor user
   const doctorEmail = 'doctor@consultorio.com';
   const doctorPassword = 'Doctor123!';
 
-  const { data: doctorAuthData, error: doctorAuthError } = await supabaseAdmin.auth.admin.createUser({
+  const { error: doctorAuthError } = await supabaseAdmin.auth.admin.createUser({
     email: doctorEmail,
     password: doctorPassword,
     email_confirm: true,
   });
 
   if (doctorAuthError) {
-    console.error('Error creating doctor auth user:', doctorAuthError);
-  } else {
-    doctorPrincipal = await prisma.user.create({
-      data: {
-        email: doctorEmail,
-        name: 'Dr. Juan Pérez',
-        role: 'doctor',
-        consultorioId: consultorio1.id,
-      },
-    });
-    console.log('✅ Doctor user created:', doctorEmail, '/', doctorPassword);
+    console.warn('Warning creating doctor auth user:', doctorAuthError.message ?? doctorAuthError);
   }
+
+  doctorPrincipal = await prisma.user.upsert({
+    where: { email: doctorEmail },
+    update: {
+      name: 'Dr. Juan Pérez',
+      role: 'doctor',
+      consultorioId: consultorio1.id,
+    },
+    create: {
+      email: doctorEmail,
+      name: 'Dr. Juan Pérez',
+      role: 'doctor',
+      consultorioId: consultorio1.id,
+    },
+  });
+
+  console.log('✅ Doctor user ready:', doctorEmail, '/', doctorPassword);
 
   // Create receptionist user
   const recepEmail = 'recepcion@consultorio.com';
   const recepPassword = 'Recep123!';
 
-  const { data: recepAuthData, error: recepAuthError } = await supabaseAdmin.auth.admin.createUser({
+  const { error: recepAuthError } = await supabaseAdmin.auth.admin.createUser({
     email: recepEmail,
     password: recepPassword,
     email_confirm: true,
   });
 
   if (recepAuthError) {
-    console.error('Error creating receptionist auth user:', recepAuthError);
-  } else {
-    const recep = await prisma.user.create({
-      data: {
-        email: recepEmail,
-        name: 'María García',
-        role: 'recepcionista',
-        consultorioId: consultorio1.id,
-      },
-    });
-    console.log('✅ Receptionist user created:', recepEmail, '/', recepPassword);
+    console.warn('Warning creating receptionist auth user:', recepAuthError.message ?? recepAuthError);
   }
+
+  await prisma.user.upsert({
+    where: { email: recepEmail },
+    update: {
+      name: 'María García',
+      role: 'recepcionista',
+      consultorioId: consultorio1.id,
+    },
+    create: {
+      email: recepEmail,
+      name: 'María García',
+      role: 'recepcionista',
+      consultorioId: consultorio1.id,
+    },
+  });
+
+  console.log('✅ Receptionist user ready:', recepEmail, '/', recepPassword);
 
   // Additional doctors for other consultorios
   const doctorGuadalupeEmail = 'doctora.guadalupe@consultorio.com';
@@ -156,18 +185,25 @@ async function main() {
   });
 
   if (doctorGuadalupeAuthError) {
-    console.error('Error creating Guadalupe doctor auth user:', doctorGuadalupeAuthError);
-  } else {
-    doctorGuadalupe = await prisma.user.create({
-      data: {
-        email: doctorGuadalupeEmail,
-        name: 'Dra. Fernanda López',
-        role: 'doctor',
-        consultorioId: consultorio2.id,
-      },
-    });
-    console.log('✅ Doctor user created:', doctorGuadalupeEmail, '/', doctorGuadalupePassword);
+    console.warn('Warning creating Guadalupe doctor auth user:', doctorGuadalupeAuthError.message ?? doctorGuadalupeAuthError);
   }
+
+  doctorGuadalupe = await prisma.user.upsert({
+    where: { email: doctorGuadalupeEmail },
+    update: {
+      name: 'Dra. Fernanda López',
+      role: 'doctor',
+      consultorioId: consultorio2.id,
+    },
+    create: {
+      email: doctorGuadalupeEmail,
+      name: 'Dra. Fernanda López',
+      role: 'doctor',
+      consultorioId: consultorio2.id,
+    },
+  });
+
+  console.log('✅ Doctor user ready:', doctorGuadalupeEmail, '/', doctorGuadalupePassword);
 
   const doctorLosArcosEmail = 'doctor.losarcos@consultorio.com';
   const doctorLosArcosPassword = 'Doctor789!';
@@ -179,18 +215,25 @@ async function main() {
   });
 
   if (doctorLosArcosAuthError) {
-    console.error('Error creating Los Arcos doctor auth user:', doctorLosArcosAuthError);
-  } else {
-    doctorLosArcos = await prisma.user.create({
-      data: {
-        email: doctorLosArcosEmail,
-        name: 'Dr. Alejandro Ruiz',
-        role: 'doctor',
-        consultorioId: consultorio3.id,
-      },
-    });
-    console.log('✅ Doctor user created:', doctorLosArcosEmail, '/', doctorLosArcosPassword);
+    console.warn('Warning creating Los Arcos doctor auth user:', doctorLosArcosAuthError.message ?? doctorLosArcosAuthError);
   }
+
+  doctorLosArcos = await prisma.user.upsert({
+    where: { email: doctorLosArcosEmail },
+    update: {
+      name: 'Dr. Alejandro Ruiz',
+      role: 'doctor',
+      consultorioId: consultorio3.id,
+    },
+    create: {
+      email: doctorLosArcosEmail,
+      name: 'Dr. Alejandro Ruiz',
+      role: 'doctor',
+      consultorioId: consultorio3.id,
+    },
+  });
+
+  console.log('✅ Doctor user ready:', doctorLosArcosEmail, '/', doctorLosArcosPassword);
 
   const doctorMediCareEmail = 'doctor.medicare@consultorio.com';
   const doctorMediCarePassword = 'Doctor321!';
@@ -202,18 +245,25 @@ async function main() {
   });
 
   if (doctorMediCareAuthError) {
-    console.error('Error creating MediCare doctor auth user:', doctorMediCareAuthError);
-  } else {
-    doctorMediCare = await prisma.user.create({
-      data: {
-        email: doctorMediCareEmail,
-        name: 'Dra. Valeria Martínez',
-        role: 'doctor',
-        consultorioId: consultorio4.id,
-      },
-    });
-    console.log('✅ Doctor user created:', doctorMediCareEmail, '/', doctorMediCarePassword);
+    console.warn('Warning creating MediCare doctor auth user:', doctorMediCareAuthError.message ?? doctorMediCareAuthError);
   }
+
+  doctorMediCare = await prisma.user.upsert({
+    where: { email: doctorMediCareEmail },
+    update: {
+      name: 'Dra. Valeria Martínez',
+      role: 'doctor',
+      consultorioId: consultorio4.id,
+    },
+    create: {
+      email: doctorMediCareEmail,
+      name: 'Dra. Valeria Martínez',
+      role: 'doctor',
+      consultorioId: consultorio4.id,
+    },
+  });
+
+  console.log('✅ Doctor user ready:', doctorMediCareEmail, '/', doctorMediCarePassword);
 
   // Ensure doctor records exist even if auth creation failed (e.g., already seeded)
   doctorPrincipal =
