@@ -8,8 +8,8 @@ class AuthService {
    * Login user with email and password
    */
   async login(email, password) {
-    // Get user from database
-    const user = await User.findOne({ email }).populate('consultorioId').lean();
+    // Get user from database (explicitly select password since it's excluded by default)
+    const user = await User.findOne({ email }).select('+password').populate('consultorioId').lean();
 
     if (!user) {
       throw new UnauthorizedError('Invalid credentials');
