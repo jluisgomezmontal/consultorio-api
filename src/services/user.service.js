@@ -1,5 +1,5 @@
+import bcrypt from 'bcrypt';
 import { User, Consultorio, Cita } from '../models/index.js';
-import { supabaseAdmin } from '../config/supabase.js';
 import { NotFoundError, BadRequestError } from '../utils/errors.js';
 
 class UserService {
@@ -61,20 +61,19 @@ class UserService {
       throw new NotFoundError('Consultorio not found');
     }
 
-    // Create user in Supabase Auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: data.email,
-      password,
-      email_confirm: true,
-    });
-
-    if (authError) {
-      throw new BadRequestError(`Failed to create auth user: ${authError.message}`);
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: data.email });
+    if (existingUser) {
+      throw new BadRequestError('User with this email already exists');
     }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create user in database
     const user = await User.create({
       email: data.email,
+      password: hashedPassword,
       name: data.name,
       role: data.role,
       consultorioId: data.consultorioId,
@@ -82,9 +81,12 @@ class UserService {
 
     const populatedUser = await User.findById(user._id).populate('consultorioId').lean();
 
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = populatedUser;
+
     // Transform consultorioId to consultorio for compatibility
     return {
-      ...populatedUser,
+      ...userWithoutPassword,
       consultorio: populatedUser.consultorioId,
     };
   }
@@ -140,14 +142,6 @@ class UserService {
 
     // Delete from database
     await User.findByIdAndDelete(id);
-
-    // Delete from Supabase Auth
-    try {
-      await supabaseAdmin.auth.admin.deleteUser(id);
-    } catch (error) {
-      // Log error but don't fail if Supabase deletion fails
-      console.error('Failed to delete user from Supabase:', error);
-    }
 
     return { message: 'User deleted successfully' };
   }

@@ -1,17 +1,7 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
-import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcrypt';
 import { Consultorio, User, Paciente, Cita, Pago } from './src/models/index.js';
-
-// Supabase setup
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment variables');
-}
-
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 async function connectDB() {
   try {
@@ -85,30 +75,22 @@ async function main() {
 
   console.log('✅ Consultorios created');
 
-  // Create admin user in Supabase Auth
+  // Create users with hashed passwords
   const adminEmail = 'admin@consultorio.com';
   const adminPassword = 'Admin123!';
+  const hashedAdminPassword = await bcrypt.hash(adminPassword, 10);
 
   let doctorPrincipal;
   let doctorGuadalupe;
   let doctorLosArcos;
   let doctorMediCare;
 
-  const { error: adminAuthError } = await supabaseAdmin.auth.admin.createUser({
-    email: adminEmail,
-    password: adminPassword,
-    email_confirm: true,
-  });
-
-  if (adminAuthError) {
-    console.warn('Warning creating admin auth user:', adminAuthError.message ?? adminAuthError);
-  }
-
   await User.findOneAndUpdate(
     { email: adminEmail },
     {
       name: 'Administrador Principal',
       role: 'admin',
+      password: hashedAdminPassword,
       consultorioId: consultorio1._id,
     },
     { upsert: true, new: true }
@@ -119,22 +101,14 @@ async function main() {
   // Create doctor user
   const doctorEmail = 'doctor@consultorio.com';
   const doctorPassword = 'Doctor123!';
-
-  const { error: doctorAuthError } = await supabaseAdmin.auth.admin.createUser({
-    email: doctorEmail,
-    password: doctorPassword,
-    email_confirm: true,
-  });
-
-  if (doctorAuthError) {
-    console.warn('Warning creating doctor auth user:', doctorAuthError.message ?? doctorAuthError);
-  }
+  const hashedDoctorPassword = await bcrypt.hash(doctorPassword, 10);
 
   doctorPrincipal = await User.findOneAndUpdate(
     { email: doctorEmail },
     {
       name: 'Dr. Juan Pérez',
       role: 'doctor',
+      password: hashedDoctorPassword,
       consultorioId: consultorio1._id,
     },
     { upsert: true, new: true }
@@ -145,22 +119,14 @@ async function main() {
   // Create receptionist user
   const recepEmail = 'recepcion@consultorio.com';
   const recepPassword = 'Recep123!';
-
-  const { error: recepAuthError } = await supabaseAdmin.auth.admin.createUser({
-    email: recepEmail,
-    password: recepPassword,
-    email_confirm: true,
-  });
-
-  if (recepAuthError) {
-    console.warn('Warning creating receptionist auth user:', recepAuthError.message ?? recepAuthError);
-  }
+  const hashedRecepPassword = await bcrypt.hash(recepPassword, 10);
 
   await User.findOneAndUpdate(
     { email: recepEmail },
     {
       name: 'María García',
       role: 'recepcionista',
+      password: hashedRecepPassword,
       consultorioId: consultorio1._id,
     },
     { upsert: true, new: true }
@@ -171,25 +137,14 @@ async function main() {
   // Additional doctors for other consultorios
   const doctorGuadalupeEmail = 'doctora.guadalupe@consultorio.com';
   const doctorGuadalupePassword = 'Doctor456!';
-
-  const { error: doctorGuadalupeAuthError } = await supabaseAdmin.auth.admin.createUser({
-    email: doctorGuadalupeEmail,
-    password: doctorGuadalupePassword,
-    email_confirm: true,
-  });
-
-  if (doctorGuadalupeAuthError) {
-    console.warn(
-      'Warning creating Guadalupe doctor auth user:',
-      doctorGuadalupeAuthError.message ?? doctorGuadalupeAuthError
-    );
-  }
+  const hashedGuadalupePassword = await bcrypt.hash(doctorGuadalupePassword, 10);
 
   doctorGuadalupe = await User.findOneAndUpdate(
     { email: doctorGuadalupeEmail },
     {
       name: 'Dra. Fernanda López',
       role: 'doctor',
+      password: hashedGuadalupePassword,
       consultorioId: consultorio2._id,
     },
     { upsert: true, new: true }
@@ -199,25 +154,14 @@ async function main() {
 
   const doctorLosArcosEmail = 'doctor.losarcos@consultorio.com';
   const doctorLosArcosPassword = 'Doctor789!';
-
-  const { error: doctorLosArcosAuthError } = await supabaseAdmin.auth.admin.createUser({
-    email: doctorLosArcosEmail,
-    password: doctorLosArcosPassword,
-    email_confirm: true,
-  });
-
-  if (doctorLosArcosAuthError) {
-    console.warn(
-      'Warning creating Los Arcos doctor auth user:',
-      doctorLosArcosAuthError.message ?? doctorLosArcosAuthError
-    );
-  }
+  const hashedLosArcosPassword = await bcrypt.hash(doctorLosArcosPassword, 10);
 
   doctorLosArcos = await User.findOneAndUpdate(
     { email: doctorLosArcosEmail },
     {
       name: 'Dr. Alejandro Ruiz',
       role: 'doctor',
+      password: hashedLosArcosPassword,
       consultorioId: consultorio3._id,
     },
     { upsert: true, new: true }
@@ -227,25 +171,14 @@ async function main() {
 
   const doctorMediCareEmail = 'doctor.medicare@consultorio.com';
   const doctorMediCarePassword = 'Doctor321!';
-
-  const { error: doctorMediCareAuthError } = await supabaseAdmin.auth.admin.createUser({
-    email: doctorMediCareEmail,
-    password: doctorMediCarePassword,
-    email_confirm: true,
-  });
-
-  if (doctorMediCareAuthError) {
-    console.warn(
-      'Warning creating MediCare doctor auth user:',
-      doctorMediCareAuthError.message ?? doctorMediCareAuthError
-    );
-  }
+  const hashedMediCarePassword = await bcrypt.hash(doctorMediCarePassword, 10);
 
   doctorMediCare = await User.findOneAndUpdate(
     { email: doctorMediCareEmail },
     {
       name: 'Dra. Valeria Martínez',
       role: 'doctor',
+      password: hashedMediCarePassword,
       consultorioId: consultorio4._id,
     },
     { upsert: true, new: true }

@@ -1,33 +1,49 @@
-import { supabase, supabaseAdmin } from '../config/supabase.js';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 import { User } from '../models/index.js';
-import { UnauthorizedError, NotFoundError } from '../utils/errors.js';
+import { UnauthorizedError, NotFoundError, BadRequestError } from '../utils/errors.js';
 
 class AuthService {
   /**
    * Login user with email and password
    */
   async login(email, password) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      throw new UnauthorizedError('Invalid credentials');
-    }
-
     // Get user from database
     const user = await User.findOne({ email }).populate('consultorioId').lean();
 
     if (!user) {
-      throw new NotFoundError('User not found in system');
+      throw new UnauthorizedError('Invalid credentials');
     }
 
+    // Verify password
+    if (!user.password) {
+      throw new UnauthorizedError('Invalid credentials');
+    }
+
+    const isValidPassword = await bcrypt.compare(password, user.password);
+
+    if (!isValidPassword) {
+      throw new UnauthorizedError('Invalid credentials');
+    }
+
+    // Generate JWT token
+    const accessToken = jwt.sign(
+      {
+        id: user._id.toString(),
+        email: user.email,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = user;
+
     return {
-      accessToken: data.session.access_token,
-      refreshToken: data.session.refresh_token,
+      accessToken,
       user: {
-        id: user._id,
+        id: user._id.toString(),
         name: user.name,
         email: user.email,
         role: user.role,
@@ -39,19 +55,31 @@ class AuthService {
   /**
    * Refresh access token
    */
-  async refreshToken(refreshToken) {
-    const { data, error } = await supabase.auth.refreshSession({
-      refresh_token: refreshToken,
-    });
+  async refreshToken(token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      
+      const user = await User.findById(decoded.id).lean();
+      
+      if (!user) {
+        throw new UnauthorizedError('User not found');
+      }
 
-    if (error) {
+      // Generate new token
+      const accessToken = jwt.sign(
+        {
+          id: user._id.toString(),
+          email: user.email,
+          role: user.role,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      return { accessToken };
+    } catch (error) {
       throw new UnauthorizedError('Invalid refresh token');
     }
-
-    return {
-      accessToken: data.session.access_token,
-      refreshToken: data.session.refresh_token,
-    };
   }
 
   /**
@@ -71,23 +99,23 @@ class AuthService {
   }
 
   /**
-   * Register a new user in Supabase (admin only)
+   * Register a new user (admin only)
    */
   async register(email, password, userData) {
-    // Create user in Supabase Auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-    });
-
-    if (authError) {
-      throw new Error(`Failed to create auth user: ${authError.message}`);
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    
+    if (existingUser) {
+      throw new BadRequestError('User with this email already exists');
     }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create user in database
     const user = await User.create({
       email,
+      password: hashedPassword,
       name: userData.name,
       role: userData.role,
       consultorioId: userData.consultorioId,
@@ -95,8 +123,11 @@ class AuthService {
 
     const populatedUser = await User.findById(user._id).populate('consultorioId').lean();
 
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = populatedUser;
+
     return {
-      ...populatedUser,
+      ...userWithoutPassword,
       consultorio: populatedUser.consultorioId,
     };
   }
@@ -105,12 +136,7 @@ class AuthService {
    * Logout user
    */
   async logout() {
-    const { error } = await supabase.auth.signOut();
-    
-    if (error) {
-      throw new Error('Failed to logout');
-    }
-
+    // With JWT, logout is handled client-side by removing the token
     return { message: 'Logged out successfully' };
   }
 }

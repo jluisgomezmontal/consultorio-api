@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import { supabase } from '../config/supabase.js';
 import { UnauthorizedError, ForbiddenError } from '../utils/errors.js';
 import { User } from '../models/index.js';
 
@@ -16,15 +15,15 @@ export const authenticate = async (req, res, next) => {
 
     const token = authHeader.substring(7);
 
-    // Verify Supabase token
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    // Verify JWT token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    if (error || !user) {
+    if (!decoded || !decoded.id) {
       throw new UnauthorizedError('Invalid or expired token');
     }
 
     // Get user from database
-    const dbUser = await User.findOne({ email: user.email })
+    const dbUser = await User.findById(decoded.id)
       .populate('consultorioId')
       .lean();
 
@@ -44,7 +43,11 @@ export const authenticate = async (req, res, next) => {
 
     next();
   } catch (error) {
-    next(error);
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      next(new UnauthorizedError('Invalid or expired token'));
+    } else {
+      next(error);
+    }
   }
 };
 

@@ -15,6 +15,11 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       index: true,
     },
+    password: {
+      type: String,
+      required: true,
+      select: false, // Don't include password in queries by default
+    },
     role: {
       type: String,
       required: true,
