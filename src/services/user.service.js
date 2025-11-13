@@ -25,10 +25,22 @@ class UserService {
     ]);
 
     // Transform consultorioId to consultorio for compatibility
-    const transformedUsers = users.map((user) => ({
-      ...user,
-      consultorio: user.consultorioId,
-    }));
+    const transformedUsers = users.map((user) => {
+      const { _id, consultorioId, ...rest } = user;
+      
+      const consultorioObject =
+        consultorioId && typeof consultorioId === 'object' && '_id' in consultorioId
+          ? consultorioId
+          : null;
+
+      return {
+        ...rest,
+        id: _id?.toString?.() ?? user.id,
+        consultorioId:
+          consultorioObject?._id?.toString?.() ?? consultorioId?.toString?.() ?? null,
+        consultorio: consultorioObject,
+      };
+    });
 
     return { users: transformedUsers, total, page, limit };
   }
@@ -44,9 +56,19 @@ class UserService {
     }
 
     // Transform consultorioId to consultorio for compatibility
+    const { _id, consultorioId, ...rest } = user;
+    
+    const consultorioObject =
+      consultorioId && typeof consultorioId === 'object' && '_id' in consultorioId
+        ? consultorioId
+        : null;
+
     return {
-      ...user,
-      consultorio: user.consultorioId,
+      ...rest,
+      id: _id?.toString?.() ?? user.id,
+      consultorioId:
+        consultorioObject?._id?.toString?.() ?? consultorioId?.toString?.() ?? null,
+      consultorio: consultorioObject,
     };
   }
 
@@ -170,11 +192,23 @@ class UserService {
 
     const doctors = await User.find(filter).populate('consultorioId').lean();
 
-    // Transform consultorioId to consultorio for compatibility
-    return doctors.map((doctor) => ({
-      ...doctor,
-      consultorio: doctor.consultorioId,
-    }));
+    // Transform lean documents to include id field and populated consultorio info
+    return doctors.map((doctor) => {
+      const { _id, consultorioId, ...rest } = doctor;
+
+      const consultorioObject =
+        consultorioId && typeof consultorioId === 'object' && '_id' in consultorioId
+          ? consultorioId
+          : null;
+
+      return {
+        ...rest,
+        id: _id?.toString?.() ?? doctor.id,
+        consultorioId:
+          consultorioObject?._id?.toString?.() ?? consultorioId?.toString?.() ?? null,
+        consultorio: consultorioObject,
+      };
+    });
   }
 }
 
