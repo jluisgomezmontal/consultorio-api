@@ -8,9 +8,13 @@ import { errorHandler, notFoundHandler } from './middlewares/errorHandler.js';
 import { generalLimiter } from './middlewares/rateLimiter.js';
 import { sanitizeInput } from './middlewares/validation.js';
 import logger from './utils/logger.js';
+import connectDB from './config/database.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Connect to MongoDB
+await connectDB();
 
 // Security middleware
 app.use(helmet());

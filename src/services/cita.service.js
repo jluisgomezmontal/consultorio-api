@@ -1,4 +1,4 @@
-import prisma from '../config/database.js';
+import { Cita, Paciente, User, Consultorio, Pago } from '../models/index.js';
 import { NotFoundError, ConflictError, BadRequestError } from '../utils/errors.js';
 
 class CitaService {
@@ -8,128 +8,111 @@ class CitaService {
   async getAllCitas(filters = {}, page = 1, limit = 10) {
     const skip = (page - 1) * limit;
 
-    const andConditions = [];
+    const filter = {};
 
     if (filters.doctorId) {
-      andConditions.push({ doctorId: filters.doctorId });
+      filter.doctorId = filters.doctorId;
     }
 
     if (filters.pacienteId) {
-      andConditions.push({ pacienteId: filters.pacienteId });
+      filter.pacienteId = filters.pacienteId;
     }
 
     if (filters.consultorioId) {
-      andConditions.push({ consultorioId: filters.consultorioId });
+      filter.consultorioId = filters.consultorioId;
     }
 
     if (filters.estado) {
-      andConditions.push({ estado: filters.estado });
+      filter.estado = filters.estado;
     }
 
     if (filters.dateFrom || filters.dateTo) {
-      const dateFilter = {};
+      filter.date = {};
       if (filters.dateFrom) {
-        dateFilter.gte = new Date(filters.dateFrom);
+        filter.date.$gte = new Date(filters.dateFrom);
       }
       if (filters.dateTo) {
-        dateFilter.lte = new Date(filters.dateTo);
+        filter.date.$lte = new Date(filters.dateTo);
       }
-      andConditions.push({ date: dateFilter });
     }
 
-    if (filters.search) {
-      const searchTerm = filters.search.trim();
-      if (searchTerm.length > 0) {
-        const textSearch = {
-          contains: searchTerm,
-          mode: 'insensitive',
-        };
+    // Search needs to be handled separately with aggregation
+    let query = Cita.find(filter)
+      .skip(skip)
+      .limit(limit)
+      .populate('pacienteId', 'id fullName phone email')
+      .populate('doctorId', 'id name email')
+      .populate('consultorioId', 'id name')
+      .sort({ date: 1, time: 1 });
 
-        andConditions.push({
-          OR: [
-            { paciente: { fullName: textSearch } },
-            { paciente: { phone: textSearch } },
-            { paciente: { email: textSearch } },
-            { doctor: { name: textSearch } },
-            { doctor: { email: textSearch } },
-            { consultorio: { name: textSearch } },
-            { motivo: textSearch },
-            { diagnostico: textSearch },
-            { tratamiento: textSearch },
-            { notas: textSearch },
-          ],
+    const [citas, total] = await Promise.all([
+      query.lean(),
+      Cita.countDocuments(filter),
+    ]);
+
+    // Get pagos for each cita
+    const citasWithPagos = await Promise.all(
+      citas.map(async (cita) => {
+        const pagos = await Pago.find({ citaId: cita._id }).lean();
+        return {
+          ...cita,
+          paciente: cita.pacienteId,
+          doctor: cita.doctorId,
+          consultorio: cita.consultorioId,
+          pagos,
+        };
+      })
+    );
+
+    // Apply text search filter if provided
+    let filteredCitas = citasWithPagos;
+    if (filters.search) {
+      const searchTerm = filters.search.trim().toLowerCase();
+      if (searchTerm.length > 0) {
+        filteredCitas = citasWithPagos.filter((cita) => {
+          return (
+            cita.paciente?.fullName?.toLowerCase().includes(searchTerm) ||
+            cita.paciente?.phone?.toLowerCase().includes(searchTerm) ||
+            cita.paciente?.email?.toLowerCase().includes(searchTerm) ||
+            cita.doctor?.name?.toLowerCase().includes(searchTerm) ||
+            cita.doctor?.email?.toLowerCase().includes(searchTerm) ||
+            cita.consultorio?.name?.toLowerCase().includes(searchTerm) ||
+            cita.motivo?.toLowerCase().includes(searchTerm) ||
+            cita.diagnostico?.toLowerCase().includes(searchTerm) ||
+            cita.tratamiento?.toLowerCase().includes(searchTerm) ||
+            cita.notas?.toLowerCase().includes(searchTerm)
+          );
         });
       }
     }
 
-    const where = andConditions.length > 0 ? { AND: andConditions } : {};
-
-    const [citas, total] = await Promise.all([
-      prisma.cita.findMany({
-        where,
-        skip,
-        take: limit,
-        include: {
-          paciente: {
-            select: {
-              id: true,
-              fullName: true,
-              phone: true,
-              email: true,
-            },
-          },
-          doctor: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-          consultorio: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          pagos: true,
-        },
-        orderBy: [
-          { date: 'asc' },
-          { time: 'asc' },
-        ],
-      }),
-      prisma.cita.count({ where }),
-    ]);
-
-    return { citas, total, page, limit };
+    return { citas: filteredCitas, total, page, limit };
   }
 
   /**
    * Get cita by ID
    */
   async getCitaById(id) {
-    const cita = await prisma.cita.findUnique({
-      where: { id },
-      include: {
-        paciente: true,
-        doctor: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-        consultorio: true,
-        pagos: true,
-      },
-    });
+    const cita = await Cita.findById(id)
+      .populate('pacienteId')
+      .populate('doctorId', 'id name email role')
+      .populate('consultorioId')
+      .lean();
 
     if (!cita) {
       throw new NotFoundError('Cita not found');
     }
 
-    return cita;
+    // Get pagos
+    const pagos = await Pago.find({ citaId: id }).lean();
+
+    return {
+      ...cita,
+      paciente: cita.pacienteId,
+      doctor: cita.doctorId,
+      consultorio: cita.consultorioId,
+      pagos,
+    };
   }
 
   /**
@@ -137,17 +120,13 @@ class CitaService {
    */
   async createCita(data) {
     // Validate paciente exists
-    const paciente = await prisma.paciente.findUnique({
-      where: { id: data.pacienteId },
-    });
+    const paciente = await Paciente.findById(data.pacienteId);
     if (!paciente) {
       throw new NotFoundError('Paciente not found');
     }
 
     // Validate doctor exists and is a doctor
-    const doctor = await prisma.user.findUnique({
-      where: { id: data.doctorId },
-    });
+    const doctor = await User.findById(data.doctorId);
     if (!doctor) {
       throw new NotFoundError('Doctor not found');
     }
@@ -156,9 +135,7 @@ class CitaService {
     }
 
     // Validate consultorio exists
-    const consultorio = await prisma.consultorio.findUnique({
-      where: { id: data.consultorioId },
-    });
+    const consultorio = await Consultorio.findById(data.consultorioId);
     if (!consultorio) {
       throw new NotFoundError('Consultorio not found');
     }
@@ -177,34 +154,30 @@ class CitaService {
     }
 
     // Create cita
-    const cita = await prisma.cita.create({
-      data: {
-        ...data,
-        date: new Date(data.date),
-      },
-      include: {
-        paciente: true,
-        doctor: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        consultorio: true,
-      },
+    const cita = await Cita.create({
+      ...data,
+      date: new Date(data.date),
     });
 
-    return cita;
+    const populatedCita = await Cita.findById(cita._id)
+      .populate('pacienteId')
+      .populate('doctorId', 'id name email')
+      .populate('consultorioId')
+      .lean();
+
+    return {
+      ...populatedCita,
+      paciente: populatedCita.pacienteId,
+      doctor: populatedCita.doctorId,
+      consultorio: populatedCita.consultorioId,
+    };
   }
 
   /**
    * Update cita
    */
   async updateCita(id, data) {
-    const cita = await prisma.cita.findUnique({
-      where: { id },
-    });
+    const cita = await Cita.findById(id);
 
     if (!cita) {
       throw new NotFoundError('Cita not found');
@@ -231,75 +204,74 @@ class CitaService {
     }
 
     // Update cita
-    const updatedCita = await prisma.cita.update({
-      where: { id },
-      data: {
-        ...data,
-        date: data.date ? new Date(data.date) : undefined,
-      },
-      include: {
-        paciente: true,
-        doctor: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        consultorio: true,
-        pagos: true,
-      },
-    });
+    const updateData = { ...data };
+    if (data.date) {
+      updateData.date = new Date(data.date);
+    }
 
-    return updatedCita;
+    const updatedCita = await Cita.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    })
+      .populate('pacienteId')
+      .populate('doctorId', 'id name email')
+      .populate('consultorioId')
+      .lean();
+
+    // Get pagos
+    const pagos = await Pago.find({ citaId: id }).lean();
+
+    return {
+      ...updatedCita,
+      paciente: updatedCita.pacienteId,
+      doctor: updatedCita.doctorId,
+      consultorio: updatedCita.consultorioId,
+      pagos,
+    };
   }
 
   /**
    * Cancel cita
    */
   async cancelCita(id) {
-    const cita = await prisma.cita.findUnique({
-      where: { id },
-    });
+    const cita = await Cita.findById(id);
 
     if (!cita) {
       throw new NotFoundError('Cita not found');
     }
 
-    const updatedCita = await prisma.cita.update({
-      where: { id },
-      data: { estado: 'cancelada' },
-      include: {
-        paciente: true,
-        doctor: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        consultorio: true,
-      },
-    });
+    const updatedCita = await Cita.findByIdAndUpdate(
+      id,
+      { estado: 'cancelada' },
+      { new: true }
+    )
+      .populate('pacienteId')
+      .populate('doctorId', 'id name email')
+      .populate('consultorioId')
+      .lean();
 
-    return updatedCita;
+    return {
+      ...updatedCita,
+      paciente: updatedCita.pacienteId,
+      doctor: updatedCita.doctorId,
+      consultorio: updatedCita.consultorioId,
+    };
   }
 
   /**
    * Delete cita
    */
   async deleteCita(id) {
-    const cita = await prisma.cita.findUnique({
-      where: { id },
-    });
+    const cita = await Cita.findById(id);
 
     if (!cita) {
       throw new NotFoundError('Cita not found');
     }
 
-    await prisma.cita.delete({
-      where: { id },
-    });
+    // Delete all related pagos
+    await Pago.deleteMany({ citaId: id });
+
+    await Cita.findByIdAndDelete(id);
 
     return { message: 'Cita deleted successfully' };
   }
@@ -314,25 +286,23 @@ class CitaService {
     const nextDay = new Date(dateObj);
     nextDay.setDate(nextDay.getDate() + 1);
 
-    const where = {
+    const filter = {
       doctorId,
       date: {
-        gte: dateObj,
-        lt: nextDay,
+        $gte: dateObj,
+        $lt: nextDay,
       },
       time,
       estado: {
-        notIn: ['cancelada'],
+        $nin: ['cancelada'],
       },
     };
 
     if (excludeCitaId) {
-      where.id = { not: excludeCitaId };
+      filter._id = { $ne: excludeCitaId };
     }
 
-    const conflictingCita = await prisma.cita.findFirst({
-      where,
-    });
+    const conflictingCita = await Cita.findOne(filter);
 
     return conflictingCita;
   }
@@ -348,40 +318,27 @@ class CitaService {
     const startDate = new Date(targetYear, targetMonth - 1, 1);
     const endDate = new Date(targetYear, targetMonth, 0, 23, 59, 59);
 
-    const where = {
+    const filter = {
       date: {
-        gte: startDate,
-        lte: endDate,
+        $gte: startDate,
+        $lte: endDate,
       },
     };
 
-    if (doctorId) where.doctorId = doctorId;
-    if (consultorioId) where.consultorioId = consultorioId;
+    if (doctorId) filter.doctorId = doctorId;
+    if (consultorioId) filter.consultorioId = consultorioId;
 
-    const citas = await prisma.cita.findMany({
-      where,
-      include: {
-        paciente: {
-          select: {
-            id: true,
-            fullName: true,
-            phone: true,
-          },
-        },
-        doctor: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-      orderBy: [
-        { date: 'asc' },
-        { time: 'asc' },
-      ],
-    });
+    const citas = await Cita.find(filter)
+      .populate('pacienteId', 'id fullName phone')
+      .populate('doctorId', 'id name')
+      .sort({ date: 1, time: 1 })
+      .lean();
 
-    return citas;
+    return citas.map((cita) => ({
+      ...cita,
+      paciente: cita.pacienteId,
+      doctor: cita.doctorId,
+    }));
   }
 }
 

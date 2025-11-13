@@ -1,4 +1,4 @@
-import prisma from '../config/database.js';
+import { Pago, Cita, Paciente, User } from '../models/index.js';
 import { NotFoundError } from '../utils/errors.js';
 
 class PagoService {
@@ -8,78 +8,79 @@ class PagoService {
   async getAllPagos(filters = {}, page = 1, limit = 10) {
     const skip = (page - 1) * limit;
 
-    const where = {};
+    const filter = {};
 
-    if (filters.citaId) where.citaId = filters.citaId;
-    if (filters.estatus) where.estatus = filters.estatus;
+    if (filters.citaId) filter.citaId = filters.citaId;
+    if (filters.estatus) filter.estatus = filters.estatus;
 
     if (filters.dateFrom || filters.dateTo) {
-      where.fechaPago = {};
-      if (filters.dateFrom) where.fechaPago.gte = new Date(filters.dateFrom);
-      if (filters.dateTo) where.fechaPago.lte = new Date(filters.dateTo);
+      filter.fechaPago = {};
+      if (filters.dateFrom) filter.fechaPago.$gte = new Date(filters.dateFrom);
+      if (filters.dateTo) filter.fechaPago.$lte = new Date(filters.dateTo);
     }
 
     const [pagos, total] = await Promise.all([
-      prisma.pago.findMany({
-        where,
-        skip,
-        take: limit,
-        include: {
-          cita: {
-            include: {
-              paciente: {
-                select: {
-                  id: true,
-                  fullName: true,
-                },
-              },
-              doctor: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-            },
-          },
-        },
-        orderBy: {
-          fechaPago: 'desc',
-        },
-      }),
-      prisma.pago.count({ where }),
+      Pago.find(filter)
+        .skip(skip)
+        .limit(limit)
+        .populate({
+          path: 'citaId',
+          populate: [
+            { path: 'pacienteId', select: 'id fullName' },
+            { path: 'doctorId', select: 'id name' },
+          ],
+        })
+        .sort({ fechaPago: -1 })
+        .lean(),
+      Pago.countDocuments(filter),
     ]);
 
-    return { pagos, total, page, limit };
+    // Transform citaId to cita for compatibility
+    const transformedPagos = pagos.map((pago) => ({
+      ...pago,
+      cita: pago.citaId
+        ? {
+            ...pago.citaId,
+            paciente: pago.citaId.pacienteId,
+            doctor: pago.citaId.doctorId,
+          }
+        : null,
+    }));
+
+    return { pagos: transformedPagos, total, page, limit };
   }
 
   /**
    * Get pago by ID
    */
   async getPagoById(id) {
-    const pago = await prisma.pago.findUnique({
-      where: { id },
-      include: {
-        cita: {
-          include: {
-            paciente: true,
-            doctor: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-            consultorio: true,
-          },
-        },
-      },
-    });
+    const pago = await Pago.findById(id)
+      .populate({
+        path: 'citaId',
+        populate: [
+          { path: 'pacienteId' },
+          { path: 'doctorId', select: 'id name email' },
+          { path: 'consultorioId' },
+        ],
+      })
+      .lean();
 
     if (!pago) {
       throw new NotFoundError('Pago not found');
     }
 
-    return pago;
+    // Transform citaId to cita for compatibility
+    return {
+      ...pago,
+      cita: pago.citaId
+        ? {
+            ...pago.citaId,
+            paciente: pago.citaId.pacienteId,
+            doctor: pago.citaId.doctorId,
+            consultorio: pago.citaId.consultorioId,
+          }
+        : null,
+    };
   }
 
   /**
@@ -87,98 +88,88 @@ class PagoService {
    */
   async createPago(data) {
     // Validate cita exists
-    const cita = await prisma.cita.findUnique({
-      where: { id: data.citaId },
-    });
+    const cita = await Cita.findById(data.citaId);
 
     if (!cita) {
       throw new NotFoundError('Cita not found');
     }
 
-    const pago = await prisma.pago.create({
-      data: {
-        ...data,
-        fechaPago: data.fechaPago ? new Date(data.fechaPago) : new Date(),
-      },
-      include: {
-        cita: {
-          include: {
-            paciente: {
-              select: {
-                id: true,
-                fullName: true,
-              },
-            },
-            doctor: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
-      },
+    const pago = await Pago.create({
+      ...data,
+      fechaPago: data.fechaPago ? new Date(data.fechaPago) : new Date(),
     });
 
-    return pago;
+    const populatedPago = await Pago.findById(pago._id)
+      .populate({
+        path: 'citaId',
+        populate: [
+          { path: 'pacienteId', select: 'id fullName' },
+          { path: 'doctorId', select: 'id name' },
+        ],
+      })
+      .lean();
+
+    // Transform citaId to cita for compatibility
+    return {
+      ...populatedPago,
+      cita: populatedPago.citaId
+        ? {
+            ...populatedPago.citaId,
+            paciente: populatedPago.citaId.pacienteId,
+            doctor: populatedPago.citaId.doctorId,
+          }
+        : null,
+    };
   }
 
   /**
    * Update pago
    */
   async updatePago(id, data) {
-    const pago = await prisma.pago.findUnique({
-      where: { id },
-    });
+    const updateData = { ...data };
+    if (data.fechaPago) {
+      updateData.fechaPago = new Date(data.fechaPago);
+    }
 
-    if (!pago) {
+    const updatedPago = await Pago.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    })
+      .populate({
+        path: 'citaId',
+        populate: [
+          { path: 'pacienteId', select: 'id fullName' },
+          { path: 'doctorId', select: 'id name' },
+        ],
+      })
+      .lean();
+
+    if (!updatedPago) {
       throw new NotFoundError('Pago not found');
     }
 
-    const updatedPago = await prisma.pago.update({
-      where: { id },
-      data: {
-        ...data,
-        fechaPago: data.fechaPago ? new Date(data.fechaPago) : undefined,
-      },
-      include: {
-        cita: {
-          include: {
-            paciente: {
-              select: {
-                id: true,
-                fullName: true,
-              },
-            },
-            doctor: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    return updatedPago;
+    // Transform citaId to cita for compatibility
+    return {
+      ...updatedPago,
+      cita: updatedPago.citaId
+        ? {
+            ...updatedPago.citaId,
+            paciente: updatedPago.citaId.pacienteId,
+            doctor: updatedPago.citaId.doctorId,
+          }
+        : null,
+    };
   }
 
   /**
    * Delete pago
    */
   async deletePago(id) {
-    const pago = await prisma.pago.findUnique({
-      where: { id },
-    });
+    const pago = await Pago.findByIdAndDelete(id);
 
     if (!pago) {
       throw new NotFoundError('Pago not found');
     }
-
-    await prisma.pago.delete({
-      where: { id },
-    });
 
     return { message: 'Pago deleted successfully' };
   }
@@ -187,69 +178,83 @@ class PagoService {
    * Get income report by date range
    */
   async getIncomeReport(dateFrom, dateTo, doctorId = null, consultorioId = null) {
-    const where = {
+    // First get citas that match the filters
+    const citaFilter = {};
+    if (doctorId) citaFilter.doctorId = doctorId;
+    if (consultorioId) citaFilter.consultorioId = consultorioId;
+
+    const citaIds = await Cita.find(citaFilter).select('_id').lean();
+    const citaIdsList = citaIds.map((c) => c._id);
+
+    // Build pago filter
+    const pagoFilter = {
       estatus: 'pagado',
+      citaId: { $in: citaIdsList },
     };
 
     if (dateFrom || dateTo) {
-      where.fechaPago = {};
-      if (dateFrom) where.fechaPago.gte = new Date(dateFrom);
-      if (dateTo) where.fechaPago.lte = new Date(dateTo);
+      pagoFilter.fechaPago = {};
+      if (dateFrom) pagoFilter.fechaPago.$gte = new Date(dateFrom);
+      if (dateTo) pagoFilter.fechaPago.$lte = new Date(dateTo);
     }
 
-    if (doctorId || consultorioId) {
-      where.cita = {};
-      if (doctorId) where.cita.doctorId = doctorId;
-      if (consultorioId) where.cita.consultorioId = consultorioId;
-    }
-
-    const [totalIngresos, pagosPorMetodo, pagosDetalle] = await Promise.all([
-      prisma.pago.aggregate({
-        where,
-        _sum: {
-          monto: true,
-        },
-        _count: true,
-      }),
-      prisma.pago.groupBy({
-        by: ['metodo'],
-        where,
-        _sum: {
-          monto: true,
-        },
-        _count: true,
-      }),
-      prisma.pago.findMany({
-        where,
-        include: {
-          cita: {
-            include: {
-              paciente: {
-                select: {
-                  id: true,
-                  fullName: true,
-                },
-              },
-              doctor: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-            },
+    const [totalIngresosResult, pagosPorMetodoResult, pagosDetalle] = await Promise.all([
+      Pago.aggregate([
+        { $match: pagoFilter },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$monto' },
+            count: { $sum: 1 },
           },
         },
-        orderBy: {
-          fechaPago: 'desc',
+      ]),
+      Pago.aggregate([
+        { $match: pagoFilter },
+        {
+          $group: {
+            _id: '$metodo',
+            _sum: { monto: { $sum: '$monto' } },
+            _count: { $sum: 1 },
+          },
         },
-      }),
+      ]),
+      Pago.find(pagoFilter)
+        .populate({
+          path: 'citaId',
+          populate: [
+            { path: 'pacienteId', select: 'id fullName' },
+            { path: 'doctorId', select: 'id name' },
+          ],
+        })
+        .sort({ fechaPago: -1 })
+        .lean(),
     ]);
 
+    // Transform pagos for compatibility
+    const transformedPagos = pagosDetalle.map((pago) => ({
+      ...pago,
+      cita: pago.citaId
+        ? {
+            ...pago.citaId,
+            paciente: pago.citaId.pacienteId,
+            doctor: pago.citaId.doctorId,
+          }
+        : null,
+    }));
+
+    // Transform pagosPorMetodo for compatibility
+    const pagosPorMetodo = pagosPorMetodoResult.map((item) => ({
+      metodo: item._id,
+      _sum: { monto: item._sum.monto },
+      _count: item._count,
+    }));
+
     return {
-      totalIngresos: totalIngresos._sum.monto || 0,
-      totalPagos: totalIngresos._count,
+      totalIngresos: totalIngresosResult[0]?.total || 0,
+      totalPagos: totalIngresosResult[0]?.count || 0,
       pagosPorMetodo,
-      pagosDetalle,
+      pagosDetalle: transformedPagos,
     };
   }
 
@@ -257,13 +262,7 @@ class PagoService {
    * Get pagos by cita
    */
   async getPagosByCita(citaId) {
-    const pagos = await prisma.pago.findMany({
-      where: { citaId },
-      orderBy: {
-        fechaPago: 'desc',
-      },
-    });
-
+    const pagos = await Pago.find({ citaId }).sort({ fechaPago: -1 }).lean();
     return pagos;
   }
 }

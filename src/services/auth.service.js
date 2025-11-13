@@ -1,5 +1,5 @@
 import { supabase, supabaseAdmin } from '../config/supabase.js';
-import prisma from '../config/database.js';
+import { User } from '../models/index.js';
 import { UnauthorizedError, NotFoundError } from '../utils/errors.js';
 
 class AuthService {
@@ -17,12 +17,7 @@ class AuthService {
     }
 
     // Get user from database
-    const user = await prisma.user.findUnique({
-      where: { email },
-      include: {
-        consultorio: true,
-      },
-    });
+    const user = await User.findOne({ email }).populate('consultorioId').lean();
 
     if (!user) {
       throw new NotFoundError('User not found in system');
@@ -32,11 +27,11 @@ class AuthService {
       accessToken: data.session.access_token,
       refreshToken: data.session.refresh_token,
       user: {
-        id: user.id,
+        id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
-        consultorio: user.consultorio,
+        consultorio: user.consultorioId,
       },
     };
   }
@@ -63,18 +58,16 @@ class AuthService {
    * Get current user info
    */
   async getCurrentUser(userId) {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        consultorio: true,
-      },
-    });
+    const user = await User.findById(userId).populate('consultorioId').lean();
 
     if (!user) {
       throw new NotFoundError('User not found');
     }
 
-    return user;
+    return {
+      ...user,
+      consultorio: user.consultorioId,
+    };
   }
 
   /**
@@ -93,19 +86,19 @@ class AuthService {
     }
 
     // Create user in database
-    const user = await prisma.user.create({
-      data: {
-        email,
-        name: userData.name,
-        role: userData.role,
-        consultorioId: userData.consultorioId,
-      },
-      include: {
-        consultorio: true,
-      },
+    const user = await User.create({
+      email,
+      name: userData.name,
+      role: userData.role,
+      consultorioId: userData.consultorioId,
     });
 
-    return user;
+    const populatedUser = await User.findById(user._id).populate('consultorioId').lean();
+
+    return {
+      ...populatedUser,
+      consultorio: populatedUser.consultorioId,
+    };
   }
 
   /**

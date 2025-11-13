@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { supabase } from '../config/supabase.js';
 import { UnauthorizedError, ForbiddenError } from '../utils/errors.js';
-import prisma from '../config/database.js';
+import { User } from '../models/index.js';
 
 /**
  * Verify JWT token and attach user to request
@@ -18,18 +18,15 @@ export const authenticate = async (req, res, next) => {
 
     // Verify Supabase token
     const { data: { user }, error } = await supabase.auth.getUser(token);
-    console.log({user})
+    
     if (error || !user) {
       throw new UnauthorizedError('Invalid or expired token');
     }
 
     // Get user from database
-    const dbUser = await prisma.user.findUnique({
-      where: { email: user.email },
-      include: {
-        consultorio: true,
-      },
-    });
+    const dbUser = await User.findOne({ email: user.email })
+      .populate('consultorioId')
+      .lean();
 
     if (!dbUser) {
       throw new UnauthorizedError('User not found in system');
@@ -37,12 +34,12 @@ export const authenticate = async (req, res, next) => {
 
     // Attach user to request
     req.user = {
-      id: dbUser.id,
+      id: dbUser._id.toString(),
       email: dbUser.email,
       name: dbUser.name,
       role: dbUser.role,
-      consultorioId: dbUser.consultorioId,
-      consultorio: dbUser.consultorio,
+      consultorioId: dbUser.consultorioId?._id?.toString() || dbUser.consultorioId,
+      consultorio: dbUser.consultorioId,
     };
 
     next();

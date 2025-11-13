@@ -1,4 +1,4 @@
-import prisma from '../config/database.js';
+import { Paciente, Cita, User, Consultorio, Pago } from '../models/index.js';
 import { NotFoundError } from '../utils/errors.js';
 
 class PacienteService {
@@ -8,26 +8,19 @@ class PacienteService {
   async getAllPacientes(page = 1, limit = 10, search = '') {
     const skip = (page - 1) * limit;
 
-    const where = search
+    const filter = search
       ? {
-          OR: [
-            { fullName: { contains: search, mode: 'insensitive' } },
-            { phone: { contains: search } },
-            { email: { contains: search, mode: 'insensitive' } },
+          $or: [
+            { fullName: { $regex: search, $options: 'i' } },
+            { phone: { $regex: search, $options: 'i' } },
+            { email: { $regex: search, $options: 'i' } },
           ],
         }
       : {};
 
     const [pacientes, total] = await Promise.all([
-      prisma.paciente.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: {
-          createdAt: 'desc',
-        },
-      }),
-      prisma.paciente.count({ where }),
+      Paciente.find(filter).skip(skip).limit(limit).sort({ createdAt: -1 }).lean(),
+      Paciente.countDocuments(filter),
     ]);
 
     return { pacientes, total, page, limit };
@@ -37,20 +30,15 @@ class PacienteService {
    * Get paciente by ID
    */
   async getPacienteById(id) {
-    const paciente = await prisma.paciente.findUnique({
-      where: { id },
-      include: {
-        _count: {
-          select: {
-            citas: true,
-          },
-        },
-      },
-    });
+    const paciente = await Paciente.findById(id).lean();
 
     if (!paciente) {
       throw new NotFoundError('Paciente not found');
     }
+
+    // Count citas for this paciente
+    const citasCount = await Cita.countDocuments({ pacienteId: id });
+    paciente._count = { citas: citasCount };
 
     return paciente;
   }
@@ -59,48 +47,41 @@ class PacienteService {
    * Create new paciente
    */
   async createPaciente(data) {
-    const paciente = await prisma.paciente.create({
-      data,
-    });
-
-    return paciente;
+    const paciente = await Paciente.create(data);
+    return paciente.toObject();
   }
 
   /**
    * Update paciente
    */
   async updatePaciente(id, data) {
-    const paciente = await prisma.paciente.findUnique({
-      where: { id },
-    });
+    const paciente = await Paciente.findByIdAndUpdate(id, data, {
+      new: true,
+      runValidators: true,
+    }).lean();
 
     if (!paciente) {
       throw new NotFoundError('Paciente not found');
     }
 
-    const updatedPaciente = await prisma.paciente.update({
-      where: { id },
-      data,
-    });
-
-    return updatedPaciente;
+    return paciente;
   }
 
   /**
    * Delete paciente
    */
   async deletePaciente(id) {
-    const paciente = await prisma.paciente.findUnique({
-      where: { id },
-    });
+    const paciente = await Paciente.findByIdAndDelete(id);
 
     if (!paciente) {
       throw new NotFoundError('Paciente not found');
     }
 
-    await prisma.paciente.delete({
-      where: { id },
-    });
+    // Delete all related citas and their pagos
+    const citas = await Cita.find({ pacienteId: id });
+    const citaIds = citas.map((cita) => cita._id);
+    await Pago.deleteMany({ citaId: { $in: citaIds } });
+    await Cita.deleteMany({ pacienteId: id });
 
     return { message: 'Paciente deleted successfully' };
   }
@@ -109,36 +90,32 @@ class PacienteService {
    * Get paciente medical history with all citas
    */
   async getPacienteHistory(id) {
-    const paciente = await prisma.paciente.findUnique({
-      where: { id },
-      include: {
-        citas: {
-          include: {
-            doctor: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-            consultorio: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-            pagos: true,
-          },
-          orderBy: {
-            date: 'desc',
-          },
-        },
-      },
-    });
+    const paciente = await Paciente.findById(id).lean();
 
     if (!paciente) {
       throw new NotFoundError('Paciente not found');
     }
+
+    const citas = await Cita.find({ pacienteId: id })
+      .populate('doctorId', 'id name email')
+      .populate('consultorioId', 'id name')
+      .sort({ date: -1 })
+      .lean();
+
+    // Get pagos for each cita
+    const citasWithPagos = await Promise.all(
+      citas.map(async (cita) => {
+        const pagos = await Pago.find({ citaId: cita._id }).lean();
+        return {
+          ...cita,
+          doctor: cita.doctorId,
+          consultorio: cita.consultorioId,
+          pagos,
+        };
+      })
+    );
+
+    paciente.citas = citasWithPagos;
 
     return paciente;
   }
@@ -147,16 +124,15 @@ class PacienteService {
    * Search pacientes by name, phone, or email
    */
   async searchPacientes(query) {
-    const pacientes = await prisma.paciente.findMany({
-      where: {
-        OR: [
-          { fullName: { contains: query, mode: 'insensitive' } },
-          { phone: { contains: query } },
-          { email: { contains: query, mode: 'insensitive' } },
-        ],
-      },
-      take: 20,
-    });
+    const pacientes = await Paciente.find({
+      $or: [
+        { fullName: { $regex: query, $options: 'i' } },
+        { phone: { $regex: query, $options: 'i' } },
+        { email: { $regex: query, $options: 'i' } },
+      ],
+    })
+      .limit(20)
+      .lean();
 
     return pacientes;
   }

@@ -1,20 +1,20 @@
-import prisma from '../config/database.js';
+import { Cita, Pago, Paciente, User } from '../models/index.js';
 
 class ReporteService {
   /**
    * Get citas statistics
    */
   async getCitasReport(dateFrom, dateTo, consultorioId = null) {
-    const where = {};
+    const filter = {};
 
     if (dateFrom || dateTo) {
-      where.date = {};
-      if (dateFrom) where.date.gte = new Date(dateFrom);
-      if (dateTo) where.date.lte = new Date(dateTo);
+      filter.date = {};
+      if (dateFrom) filter.date.$gte = new Date(dateFrom);
+      if (dateTo) filter.date.$lte = new Date(dateTo);
     }
 
     if (consultorioId) {
-      where.consultorioId = consultorioId;
+      filter.consultorioId = consultorioId;
     }
 
     const [
@@ -23,50 +23,67 @@ class ReporteService {
       citasPorDoctor,
       citasPorMes,
     ] = await Promise.all([
-      prisma.cita.count({ where }),
-      prisma.cita.groupBy({
-        by: ['estado'],
-        where,
-        _count: true,
-      }),
-      prisma.cita.groupBy({
-        by: ['doctorId'],
-        where,
-        _count: true,
-      }),
-      prisma.$queryRaw`
-        SELECT 
-          TO_CHAR(date, 'YYYY-MM') as mes,
-          COUNT(*)::int as total
-        FROM citas
-        ${consultorioId ? prisma.$queryRaw`WHERE consultorio_id = ${consultorioId}` : prisma.$queryRaw``}
-        GROUP BY TO_CHAR(date, 'YYYY-MM')
-        ORDER BY mes DESC
-        LIMIT 12
-      `,
+      Cita.countDocuments(filter),
+      Cita.aggregate([
+        { $match: filter },
+        {
+          $group: {
+            _id: '$estado',
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+      Cita.aggregate([
+        { $match: filter },
+        {
+          $group: {
+            _id: '$doctorId',
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+      Cita.aggregate([
+        { $match: consultorioId ? { consultorioId } : {} },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: '%Y-%m', date: '$date' },
+            },
+            total: { $sum: 1 },
+          },
+        },
+        { $sort: { _id: -1 } },
+        { $limit: 12 },
+        {
+          $project: {
+            mes: '$_id',
+            total: 1,
+            _id: 0,
+          },
+        },
+      ]),
     ]);
 
     // Get doctor names for citasPorDoctor
-    const doctorIds = citasPorDoctor.map((item) => item.doctorId);
-    const doctors = await prisma.user.findMany({
-      where: { id: { in: doctorIds } },
-      select: { id: true, name: true },
-    });
+    const doctorIds = citasPorDoctor.map((item) => item._id);
+    const doctors = await User.find({ _id: { $in: doctorIds } })
+      .select('_id name')
+      .lean();
 
     const citasPorDoctorConNombre = citasPorDoctor.map((item) => {
-      const doctor = doctors.find((d) => d.id === item.doctorId);
+      const doctor = doctors.find((d) => d._id.toString() === item._id.toString());
       return {
-        doctorId: item.doctorId,
+        doctorId: item._id,
         doctorName: doctor?.name || 'Unknown',
-        total: item._count,
+        total: item.count,
       };
     });
 
     return {
       totalCitas,
       citasPorEstado: citasPorEstado.map((item) => ({
-        estado: item.estado,
-        total: item._count,
+        estado: item._id,
+        total: item.count,
       })),
       citasPorDoctor: citasPorDoctorConNombre,
       citasPorMes,
@@ -77,63 +94,96 @@ class ReporteService {
    * Get income report
    */
   async getIngresosReport(dateFrom, dateTo, consultorioId = null, doctorId = null) {
-    const where = {
+    // Get citas matching criteria
+    const citaFilter = {};
+    if (consultorioId) citaFilter.consultorioId = consultorioId;
+    if (doctorId) citaFilter.doctorId = doctorId;
+
+    const matchingCitas = await Cita.find(citaFilter).select('_id doctorId').lean();
+    const citaIds = matchingCitas.map((c) => c._id);
+
+    // Build pago filter
+    const pagoFilter = {
       estatus: 'pagado',
+      citaId: { $in: citaIds },
     };
 
     if (dateFrom || dateTo) {
-      where.fechaPago = {};
-      if (dateFrom) where.fechaPago.gte = new Date(dateFrom);
-      if (dateTo) where.fechaPago.lte = new Date(dateTo);
-    }
-
-    if (consultorioId || doctorId) {
-      where.cita = {};
-      if (consultorioId) where.cita.consultorioId = consultorioId;
-      if (doctorId) where.cita.doctorId = doctorId;
+      pagoFilter.fechaPago = {};
+      if (dateFrom) pagoFilter.fechaPago.$gte = new Date(dateFrom);
+      if (dateTo) pagoFilter.fechaPago.$lte = new Date(dateTo);
     }
 
     const [
-      totalIngresos,
+      totalIngresosResult,
       pagosPorMetodo,
-      ingresosPorDoctor,
+      ingresosPorDoctorResult,
     ] = await Promise.all([
-      prisma.pago.aggregate({
-        where,
-        _sum: { monto: true },
-        _count: true,
-      }),
-      prisma.pago.groupBy({
-        by: ['metodo'],
-        where,
-        _sum: { monto: true },
-        _count: true,
-      }),
-      prisma.$queryRaw`
-        SELECT 
-          u.id,
-          u.name as doctor_name,
-          COUNT(p.id)::int as total_pagos,
-          SUM(p.monto)::float as total_ingresos
-        FROM pagos p
-        INNER JOIN citas c ON p.cita_id = c.id
-        INNER JOIN users u ON c.doctor_id = u.id
-        WHERE p.estatus = 'pagado'
-        ${dateFrom ? prisma.$queryRaw`AND p.fecha_pago >= ${dateFrom}` : prisma.$queryRaw``}
-        ${dateTo ? prisma.$queryRaw`AND p.fecha_pago <= ${dateTo}` : prisma.$queryRaw``}
-        ${consultorioId ? prisma.$queryRaw`AND c.consultorio_id = ${consultorioId}` : prisma.$queryRaw``}
-        GROUP BY u.id, u.name
-        ORDER BY total_ingresos DESC
-      `,
+      Pago.aggregate([
+        { $match: pagoFilter },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$monto' },
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+      Pago.aggregate([
+        { $match: pagoFilter },
+        {
+          $group: {
+            _id: '$metodo',
+            total: { $sum: '$monto' },
+            cantidad: { $sum: 1 },
+          },
+        },
+      ]),
+      Pago.aggregate([
+        { $match: pagoFilter },
+        {
+          $lookup: {
+            from: 'citas',
+            localField: 'citaId',
+            foreignField: '_id',
+            as: 'cita',
+          },
+        },
+        { $unwind: '$cita' },
+        {
+          $group: {
+            _id: '$cita.doctorId',
+            total_pagos: { $sum: 1 },
+            total_ingresos: { $sum: '$monto' },
+          },
+        },
+        { $sort: { total_ingresos: -1 } },
+      ]),
     ]);
 
+    // Get doctor names
+    const doctorIds = ingresosPorDoctorResult.map((item) => item._id);
+    const doctors = await User.find({ _id: { $in: doctorIds } })
+      .select('_id name')
+      .lean();
+
+    const ingresosPorDoctor = ingresosPorDoctorResult.map((item) => {
+      const doctor = doctors.find((d) => d._id.toString() === item._id.toString());
+      return {
+        id: item._id,
+        doctor_name: doctor?.name || 'Unknown',
+        total_pagos: item.total_pagos,
+        total_ingresos: item.total_ingresos,
+      };
+    });
+
     return {
-      totalIngresos: totalIngresos._sum.monto || 0,
-      totalPagos: totalIngresos._count,
+      totalIngresos: totalIngresosResult[0]?.total || 0,
+      totalPagos: totalIngresosResult[0]?.count || 0,
       pagosPorMetodo: pagosPorMetodo.map((item) => ({
-        metodo: item.metodo,
-        total: item._sum.monto || 0,
-        cantidad: item._count,
+        metodo: item._id,
+        total: item.total || 0,
+        cantidad: item.cantidad,
       })),
       ingresosPorDoctor,
     };
@@ -147,46 +197,52 @@ class ReporteService {
     const thirtyDaysAgo = new Date(now);
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const where = consultorioId ? { consultorioId } : {};
+    const citaFilter = consultorioId ? { consultorioId } : {};
 
     const [
       totalPacientes,
       nuevoPacientes,
-      pacientesRecurrentes,
+      pacientesRecurrentesResult,
       pacientesPorGenero,
     ] = await Promise.all([
-      prisma.paciente.count(),
-      prisma.paciente.count({
-        where: {
-          createdAt: {
-            gte: thirtyDaysAgo,
+      Paciente.countDocuments(),
+      Paciente.countDocuments({
+        createdAt: { $gte: thirtyDaysAgo },
+      }),
+      Cita.aggregate([
+        { $match: citaFilter },
+        {
+          $group: {
+            _id: '$pacienteId',
+            count: { $sum: 1 },
           },
         },
-      }),
-      prisma.$queryRaw`
-        SELECT COUNT(DISTINCT paciente_id)::int as total
-        FROM citas
-        WHERE paciente_id IN (
-          SELECT paciente_id
-          FROM citas
-          GROUP BY paciente_id
-          HAVING COUNT(*) > 1
-        )
-        ${consultorioId ? prisma.$queryRaw`AND consultorio_id = ${consultorioId}` : prisma.$queryRaw``}
-      `,
-      prisma.paciente.groupBy({
-        by: ['gender'],
-        _count: true,
-      }),
+        {
+          $match: {
+            count: { $gt: 1 },
+          },
+        },
+        {
+          $count: 'total',
+        },
+      ]),
+      Paciente.aggregate([
+        {
+          $group: {
+            _id: '$gender',
+            count: { $sum: 1 },
+          },
+        },
+      ]),
     ]);
 
     return {
       totalPacientes,
       nuevosPacientes: nuevoPacientes,
-      pacientesRecurrentes: pacientesRecurrentes[0]?.total || 0,
+      pacientesRecurrentes: pacientesRecurrentesResult[0]?.total || 0,
       pacientesPorGenero: pacientesPorGenero.map((item) => ({
-        genero: item.gender || 'No especificado',
-        total: item._count,
+        genero: item._id || 'No especificado',
+        total: item.count,
       })),
     };
   }
@@ -201,54 +257,55 @@ class ReporteService {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const where = consultorioId ? { consultorioId } : {};
+    const filter = consultorioId ? { consultorioId } : {};
 
     const [
       citasHoy,
       citasPendientes,
       totalPacientes,
-      ingresosHoy,
+      citasForIngresos,
     ] = await Promise.all([
-      prisma.cita.count({
-        where: {
-          ...where,
-          date: {
-            gte: today,
-            lt: tomorrow,
-          },
+      Cita.countDocuments({
+        ...filter,
+        date: {
+          $gte: today,
+          $lt: tomorrow,
         },
       }),
-      prisma.cita.count({
-        where: {
-          ...where,
-          estado: 'pendiente',
-        },
+      Cita.countDocuments({
+        ...filter,
+        estado: 'pendiente',
       }),
-      prisma.paciente.count(),
-      prisma.pago.aggregate({
-        where: {
+      Paciente.countDocuments(),
+      Cita.find(consultorioId ? { consultorioId } : {}).select('_id').lean(),
+    ]);
+
+    // Get ingresos for today
+    const citaIds = citasForIngresos.map((c) => c._id);
+    const ingresosResult = await Pago.aggregate([
+      {
+        $match: {
           estatus: 'pagado',
           fechaPago: {
-            gte: today,
-            lt: tomorrow,
+            $gte: today,
+            $lt: tomorrow,
           },
-          ...(consultorioId && {
-            cita: {
-              consultorioId,
-            },
-          }),
+          citaId: { $in: citaIds },
         },
-        _sum: {
-          monto: true,
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$monto' },
         },
-      }),
+      },
     ]);
 
     return {
       citasHoy,
       citasPendientes,
       totalPacientes,
-      ingresosHoy: ingresosHoy._sum.monto || 0,
+      ingresosHoy: ingresosResult[0]?.total || 0,
     };
   }
 }

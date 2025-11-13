@@ -1,4 +1,4 @@
-import prisma from '../config/database.js';
+import { User, Consultorio, Cita } from '../models/index.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import { NotFoundError, BadRequestError } from '../utils/errors.js';
 
@@ -8,46 +8,46 @@ class UserService {
    */
   async getAllUsers(page = 1, limit = 10, consultorioId = null) {
     const skip = (page - 1) * limit;
-    
-    const where = {};
+
+    const filter = {};
     if (consultorioId) {
-      where.consultorioId = consultorioId;
+      filter.consultorioId = consultorioId;
     }
 
     const [users, total] = await Promise.all([
-      prisma.user.findMany({
-        where,
-        skip,
-        take: limit,
-        include: {
-          consultorio: true,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      }),
-      prisma.user.count({ where }),
+      User.find(filter)
+        .skip(skip)
+        .limit(limit)
+        .populate('consultorioId')
+        .sort({ createdAt: -1 })
+        .lean(),
+      User.countDocuments(filter),
     ]);
 
-    return { users, total, page, limit };
+    // Transform consultorioId to consultorio for compatibility
+    const transformedUsers = users.map((user) => ({
+      ...user,
+      consultorio: user.consultorioId,
+    }));
+
+    return { users: transformedUsers, total, page, limit };
   }
 
   /**
    * Get user by ID
    */
   async getUserById(id) {
-    const user = await prisma.user.findUnique({
-      where: { id },
-      include: {
-        consultorio: true,
-      },
-    });
+    const user = await User.findById(id).populate('consultorioId').lean();
 
     if (!user) {
       throw new NotFoundError('User not found');
     }
 
-    return user;
+    // Transform consultorioId to consultorio for compatibility
+    return {
+      ...user,
+      consultorio: user.consultorioId,
+    };
   }
 
   /**
@@ -55,9 +55,7 @@ class UserService {
    */
   async createUser(data, password) {
     // Check if consultorio exists
-    const consultorio = await prisma.consultorio.findUnique({
-      where: { id: data.consultorioId },
-    });
+    const consultorio = await Consultorio.findById(data.consultorioId);
 
     if (!consultorio) {
       throw new NotFoundError('Consultorio not found');
@@ -75,75 +73,77 @@ class UserService {
     }
 
     // Create user in database
-    const user = await prisma.user.create({
-      data: {
-        email: data.email,
-        name: data.name,
-        role: data.role,
-        consultorioId: data.consultorioId,
-      },
-      include: {
-        consultorio: true,
-      },
+    const user = await User.create({
+      email: data.email,
+      name: data.name,
+      role: data.role,
+      consultorioId: data.consultorioId,
     });
 
-    return user;
+    const populatedUser = await User.findById(user._id).populate('consultorioId').lean();
+
+    // Transform consultorioId to consultorio for compatibility
+    return {
+      ...populatedUser,
+      consultorio: populatedUser.consultorioId,
+    };
   }
 
   /**
    * Update user
    */
   async updateUser(id, data) {
-    const user = await prisma.user.findUnique({
-      where: { id },
-    });
+    const user = await User.findById(id);
 
     if (!user) {
       throw new NotFoundError('User not found');
     }
 
     // If changing consultorio, verify it exists
-    if (data.consultorioId && data.consultorioId !== user.consultorioId) {
-      const consultorio = await prisma.consultorio.findUnique({
-        where: { id: data.consultorioId },
-      });
+    if (data.consultorioId && data.consultorioId !== user.consultorioId.toString()) {
+      const consultorio = await Consultorio.findById(data.consultorioId);
 
       if (!consultorio) {
         throw new NotFoundError('Consultorio not found');
       }
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { id },
-      data,
-      include: {
-        consultorio: true,
-      },
-    });
+    const updatedUser = await User.findByIdAndUpdate(id, data, {
+      new: true,
+      runValidators: true,
+    })
+      .populate('consultorioId')
+      .lean();
 
-    return updatedUser;
+    // Transform consultorioId to consultorio for compatibility
+    return {
+      ...updatedUser,
+      consultorio: updatedUser.consultorioId,
+    };
   }
 
   /**
    * Delete user
    */
   async deleteUser(id) {
-    const user = await prisma.user.findUnique({
-      where: { id },
-    });
+    const user = await User.findById(id);
 
     if (!user) {
       throw new NotFoundError('User not found');
     }
 
+    // Check if user has citas with restrict behavior
+    const citasCount = await Cita.countDocuments({ doctorId: id });
+    if (citasCount > 0) {
+      throw new BadRequestError('Cannot delete user with existing citas');
+    }
+
     // Delete from database
-    await prisma.user.delete({
-      where: { id },
-    });
+    await User.findByIdAndDelete(id);
 
     // Delete from Supabase Auth
     try {
-      await supabaseAdmin.auth.admin.deleteUser(user.id);
+      await supabaseAdmin.auth.admin.deleteUser(id);
     } catch (error) {
       // Log error but don't fail if Supabase deletion fails
       console.error('Failed to delete user from Supabase:', error);
@@ -156,33 +156,31 @@ class UserService {
    * Get users by consultorio
    */
   async getUsersByConsultorio(consultorioId) {
-    const users = await prisma.user.findMany({
-      where: { consultorioId },
-      include: {
-        consultorio: true,
-      },
-    });
+    const users = await User.find({ consultorioId }).populate('consultorioId').lean();
 
-    return users;
+    // Transform consultorioId to consultorio for compatibility
+    return users.map((user) => ({
+      ...user,
+      consultorio: user.consultorioId,
+    }));
   }
 
   /**
    * Get doctors
    */
   async getDoctors(consultorioId = null) {
-    const where = { role: 'doctor' };
+    const filter = { role: 'doctor' };
     if (consultorioId) {
-      where.consultorioId = consultorioId;
+      filter.consultorioId = consultorioId;
     }
 
-    const doctors = await prisma.user.findMany({
-      where,
-      include: {
-        consultorio: true,
-      },
-    });
+    const doctors = await User.find(filter).populate('consultorioId').lean();
 
-    return doctors;
+    // Transform consultorioId to consultorio for compatibility
+    return doctors.map((doctor) => ({
+      ...doctor,
+      consultorio: doctor.consultorioId,
+    }));
   }
 }
 
