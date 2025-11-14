@@ -107,9 +107,9 @@ class PacienteService {
    * Get paciente medical history with all citas
    */
   async getPacienteHistory(id) {
-    const paciente = await Paciente.findById(id).lean();
+    const pacienteDoc = await Paciente.findById(id).lean();
 
-    if (!paciente) {
+    if (!pacienteDoc) {
       throw new NotFoundError('Paciente not found');
     }
 
@@ -119,22 +119,40 @@ class PacienteService {
       .sort({ date: -1 })
       .lean();
 
-    // Get pagos for each cita
+    // Get pagos for each cita and normalize data
     const citasWithPagos = await Promise.all(
       citas.map(async (cita) => {
-        const pagos = await Pago.find({ citaId: cita._id }).lean();
+        const pagosRaw = await Pago.find({ citaId: cita._id }).lean();
+        const pagos = pagosRaw.map((pago) => {
+          const { _id, __v, citaId, ...rest } = pago;
+          return {
+            ...rest,
+            id: _id.toString(),
+            citaId: citaId?.toString() ?? citaId,
+          };
+        });
+
+        const { _id, __v, doctorId, consultorioId, pacienteId, ...rest } = cita;
         return {
-          ...cita,
-          doctor: cita.doctorId,
-          consultorio: cita.consultorioId,
+          ...rest,
+          id: _id.toString(),
+          pacienteId: pacienteId?.toString() ?? pacienteId,
+          doctorId: doctorId?.id || doctorId?._id?.toString(),
+          consultorioId: consultorioId?.id || consultorioId?._id?.toString(),
+          doctor: doctorId,
+          consultorio: consultorioId,
           pagos,
         };
       })
     );
 
-    paciente.citas = citasWithPagos;
+    const { _id, __v, ...paciente } = pacienteDoc;
 
-    return paciente;
+    return {
+      ...paciente,
+      id: _id.toString(),
+      citas: citasWithPagos,
+    };
   }
 
   /**
