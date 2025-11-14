@@ -1,5 +1,11 @@
 import { z } from 'zod';
 
+const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+
+const objectIdSchema = z
+  .string()
+  .regex(objectIdRegex, 'Invalid ObjectId');
+
 export const createConsultorioSchema = z.object({
   body: z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -21,12 +27,12 @@ export const updateConsultorioSchema = z.object({
     closeHour: z.string().optional(),
   }),
   params: z.object({
-    id: z.string().uuid('Invalid consultorio ID'),
+    id: objectIdSchema,
   }),
 });
 
 export const getConsultorioSchema = z.object({
   params: z.object({
-    id: z.string().uuid('Invalid consultorio ID'),
+    id: objectIdSchema,
   }),
 });

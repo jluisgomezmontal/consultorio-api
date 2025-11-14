@@ -54,11 +54,19 @@ class CitaService {
     const citasWithPagos = await Promise.all(
       citas.map(async (cita) => {
         const pagos = await Pago.find({ citaId: cita._id }).lean();
+        const { _id, __v, pacienteId, doctorId, consultorioId, ...rest } = cita;
+        const paciente = pacienteId;
+        const doctor = doctorId;
+        const consultorio = consultorioId;
         return {
-          ...cita,
-          paciente: cita.pacienteId,
-          doctor: cita.doctorId,
-          consultorio: cita.consultorioId,
+          ...rest,
+          id: _id.toString(),
+          pacienteId: paciente?.id || paciente?._id?.toString(),
+          doctorId: doctor?.id || doctor?._id?.toString(),
+          consultorioId: consultorio?.id || consultorio?._id?.toString(),
+          paciente,
+          doctor,
+          consultorio,
           pagos,
         };
       })
@@ -104,13 +112,30 @@ class CitaService {
     }
 
     // Get pagos
-    const pagos = await Pago.find({ citaId: id }).lean();
+    const pagosLean = await Pago.find({ citaId: id }).sort({ createdAt: -1 }).lean();
+    const pagos = pagosLean.map((pago) => {
+      const { _id, __v, citaId: pagoCitaId, ...rest } = pago;
+      return {
+        ...rest,
+        id: _id.toString(),
+        citaId: pagoCitaId?.toString() ?? pagoCitaId,
+      };
+    });
+
+    const { _id, __v, pacienteId, doctorId, consultorioId, ...rest } = cita;
+    const pacienteRef = pacienteId;
+    const doctorRef = doctorId;
+    const consultorioRef = consultorioId;
 
     return {
-      ...cita,
-      paciente: cita.pacienteId,
-      doctor: cita.doctorId,
-      consultorio: cita.consultorioId,
+      ...rest,
+      id: _id.toString(),
+      pacienteId: pacienteRef?.id || pacienteRef?._id?.toString(),
+      doctorId: doctorRef?.id || doctorRef?._id?.toString(),
+      consultorioId: consultorioRef?.id || consultorioRef?._id?.toString(),
+      paciente: pacienteRef,
+      doctor: doctorRef,
+      consultorio: consultorioRef,
       pagos,
     };
   }
@@ -165,11 +190,20 @@ class CitaService {
       .populate('consultorioId')
       .lean();
 
+    const { _id, __v, pacienteId, doctorId, consultorioId, ...rest } = populatedCita;
+    const pacienteRef = pacienteId;
+    const doctorRef = doctorId;
+    const consultorioRef = consultorioId;
+
     return {
-      ...populatedCita,
-      paciente: populatedCita.pacienteId,
-      doctor: populatedCita.doctorId,
-      consultorio: populatedCita.consultorioId,
+      ...rest,
+      id: _id.toString(),
+      pacienteId: pacienteRef?.id || pacienteRef?._id?.toString(),
+      doctorId: doctorRef?.id || doctorRef?._id?.toString(),
+      consultorioId: consultorioRef?.id || consultorioRef?._id?.toString(),
+      paciente: pacienteRef,
+      doctor: doctorRef,
+      consultorio: consultorioRef,
     };
   }
 
@@ -221,11 +255,20 @@ class CitaService {
     // Get pagos
     const pagos = await Pago.find({ citaId: id }).lean();
 
+    const { _id, __v, pacienteId, doctorId, consultorioId, ...rest } = updatedCita;
+    const pacienteRef = pacienteId;
+    const doctorRef = doctorId;
+    const consultorioRef = consultorioId;
+
     return {
-      ...updatedCita,
-      paciente: updatedCita.pacienteId,
-      doctor: updatedCita.doctorId,
-      consultorio: updatedCita.consultorioId,
+      ...rest,
+      id: _id.toString(),
+      pacienteId: pacienteRef?.id || pacienteRef?._id?.toString(),
+      doctorId: doctorRef?.id || doctorRef?._id?.toString(),
+      consultorioId: consultorioRef?.id || consultorioRef?._id?.toString(),
+      paciente: pacienteRef,
+      doctor: doctorRef,
+      consultorio: consultorioRef,
       pagos,
     };
   }
@@ -250,11 +293,20 @@ class CitaService {
       .populate('consultorioId')
       .lean();
 
+    const { _id, __v, pacienteId, doctorId, consultorioId, ...rest } = updatedCita;
+    const pacienteRef = pacienteId;
+    const doctorRef = doctorId;
+    const consultorioRef = consultorioId;
+
     return {
-      ...updatedCita,
-      paciente: updatedCita.pacienteId,
-      doctor: updatedCita.doctorId,
-      consultorio: updatedCita.consultorioId,
+      ...rest,
+      id: _id.toString(),
+      pacienteId: pacienteRef?.id || pacienteRef?._id?.toString(),
+      doctorId: doctorRef?.id || doctorRef?._id?.toString(),
+      consultorioId: consultorioRef?.id || consultorioRef?._id?.toString(),
+      paciente: pacienteRef,
+      doctor: doctorRef,
+      consultorio: consultorioRef,
     };
   }
 
@@ -334,11 +386,19 @@ class CitaService {
       .sort({ date: 1, time: 1 })
       .lean();
 
-    return citas.map((cita) => ({
-      ...cita,
-      paciente: cita.pacienteId,
-      doctor: cita.doctorId,
-    }));
+    return citas.map((cita) => {
+      const { _id, __v, pacienteId, doctorId, ...rest } = cita;
+      const pacienteRef = pacienteId;
+      const doctorRef = doctorId;
+      return {
+        ...rest,
+        id: _id.toString(),
+        pacienteId: pacienteRef?.id || pacienteRef?._id?.toString(),
+        doctorId: doctorRef?.id || doctorRef?._id?.toString(),
+        paciente: pacienteRef,
+        doctor: doctorRef,
+      };
+    });
   }
 }
 

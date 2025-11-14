@@ -8,18 +8,20 @@ class ConsultorioService {
   async getAllConsultorios(page = 1, limit = 10) {
     const skip = (page - 1) * limit;
 
-    const [consultorios, total] = await Promise.all([
+    const [consultoriosRaw, total] = await Promise.all([
       Consultorio.find().skip(skip).limit(limit).sort({ createdAt: -1 }).lean(),
       Consultorio.countDocuments(),
     ]);
 
     // Get counts for each consultorio
     const consultoriosWithCounts = await Promise.all(
-      consultorios.map(async (consultorio) => {
+      consultoriosRaw.map(async (consultorio) => {
         const usersCount = await User.countDocuments({ consultorioId: consultorio._id });
         const citasCount = await Cita.countDocuments({ consultorioId: consultorio._id });
+        const { _id, __v, ...rest } = consultorio;
         return {
-          ...consultorio,
+          ...rest,
+          id: _id.toString(),
           _count: {
             users: usersCount,
             citas: citasCount,
@@ -35,9 +37,9 @@ class ConsultorioService {
    * Get consultorio by ID
    */
   async getConsultorioById(id) {
-    const consultorio = await Consultorio.findById(id).lean();
+    const consultorioDoc = await Consultorio.findById(id).lean();
 
-    if (!consultorio) {
+    if (!consultorioDoc) {
       throw new NotFoundError('Consultorio not found');
     }
 
@@ -47,9 +49,20 @@ class ConsultorioService {
       Cita.countDocuments({ consultorioId: id }),
     ]);
 
+    const { _id, __v, ...consultorio } = consultorioDoc;
+
+    const usersWithIds = users.map((user) => {
+      const { _id: userId, __v: userV, ...userRest } = user;
+      return {
+        ...userRest,
+        id: userId.toString(),
+      };
+    });
+
     return {
       ...consultorio,
-      users,
+      id: _id.toString(),
+      users: usersWithIds,
       _count: {
         citas: citasCount,
       },
@@ -77,7 +90,12 @@ class ConsultorioService {
       throw new NotFoundError('Consultorio not found');
     }
 
-    return consultorio;
+    const { _id, __v, ...rest } = consultorio;
+
+    return {
+      ...rest,
+      id: _id.toString(),
+    };
   }
 
   /**
@@ -105,9 +123,9 @@ class ConsultorioService {
    * Get consultorio summary with statistics
    */
   async getConsultorioSummary(id) {
-    const consultorio = await Consultorio.findById(id).lean();
+    const consultorioDoc = await Consultorio.findById(id).lean();
 
-    if (!consultorio) {
+    if (!consultorioDoc) {
       throw new NotFoundError('Consultorio not found');
     }
 
@@ -153,8 +171,18 @@ class ConsultorioService {
       },
     ]);
 
+    const { _id: consultorioId, __v, ...consultorioRest } = consultorioDoc;
+
+    const usersWithIds = users.map((user) => {
+      const { _id: userId, __v: userV, ...userRest } = user;
+      return {
+        ...userRest,
+        id: userId.toString(),
+      };
+    });
+
     return {
-      consultorio: { ...consultorio, users },
+      consultorio: { ...consultorioRest, id: consultorioId.toString(), users: usersWithIds },
       statistics: {
         totalCitas,
         citasHoy,

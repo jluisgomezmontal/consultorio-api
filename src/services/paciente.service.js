@@ -18,10 +18,18 @@ class PacienteService {
         }
       : {};
 
-    const [pacientes, total] = await Promise.all([
+    const [pacientesRaw, total] = await Promise.all([
       Paciente.find(filter).skip(skip).limit(limit).sort({ createdAt: -1 }).lean(),
       Paciente.countDocuments(filter),
     ]);
+
+    const pacientes = pacientesRaw.map((paciente) => {
+      const { _id, __v, ...rest } = paciente;
+      return {
+        ...rest,
+        id: _id.toString(),
+      };
+    });
 
     return { pacientes, total, page, limit };
   }
@@ -30,17 +38,21 @@ class PacienteService {
    * Get paciente by ID
    */
   async getPacienteById(id) {
-    const paciente = await Paciente.findById(id).lean();
+    const pacienteDoc = await Paciente.findById(id).lean();
 
-    if (!paciente) {
+    if (!pacienteDoc) {
       throw new NotFoundError('Paciente not found');
     }
 
     // Count citas for this paciente
     const citasCount = await Cita.countDocuments({ pacienteId: id });
-    paciente._count = { citas: citasCount };
+    const { _id, __v, ...paciente } = pacienteDoc;
 
-    return paciente;
+    return {
+      ...paciente,
+      id: _id.toString(),
+      _count: { citas: citasCount },
+    };
   }
 
   /**
@@ -64,7 +76,12 @@ class PacienteService {
       throw new NotFoundError('Paciente not found');
     }
 
-    return paciente;
+    const { _id, __v, ...rest } = paciente;
+
+    return {
+      ...rest,
+      id: _id.toString(),
+    };
   }
 
   /**

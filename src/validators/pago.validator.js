@@ -1,8 +1,14 @@
 import { z } from 'zod';
 
+const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+
+const objectIdSchema = z
+  .string()
+  .regex(objectIdRegex, 'Invalid ObjectId');
+
 export const createPagoSchema = z.object({
   body: z.object({
-    citaId: z.string().uuid('Invalid cita ID'),
+    citaId: objectIdSchema,
     monto: z.number().positive('Amount must be positive'),
     metodo: z.enum(['efectivo', 'tarjeta', 'transferencia'], {
       errorMap: () => ({ message: 'Payment method must be efectivo, tarjeta, or transferencia' }),
@@ -26,23 +32,23 @@ export const updatePagoSchema = z.object({
     comentarios: z.string().optional(),
   }),
   params: z.object({
-    id: z.string().uuid('Invalid pago ID'),
+    id: objectIdSchema,
   }),
 });
 
 export const getPagoSchema = z.object({
   params: z.object({
-    id: z.string().uuid('Invalid pago ID'),
+    id: objectIdSchema,
   }),
 });
 
 export const listPagosSchema = z.object({
   query: z.object({
-    citaId: z.string().uuid().optional(),
+    citaId: objectIdSchema.optional(),
     estatus: z.enum(['pagado', 'pendiente']).optional(),
     dateFrom: z.string().optional(),
     dateTo: z.string().optional(),
-    page: z.string().regex(/^\d+$/).optional(),
+    page: z.string().regex(/^[0-9]+$/).optional(),
     limit: z.string().regex(/^\d+$/).optional(),
   }),
 });

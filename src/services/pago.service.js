@@ -36,16 +36,24 @@ class PagoService {
     ]);
 
     // Transform citaId to cita for compatibility
-    const transformedPagos = pagos.map((pago) => ({
-      ...pago,
-      cita: pago.citaId
+    const transformedPagos = pagos.map((pago) => {
+      const { _id, __v, citaId, ...rest } = pago;
+      const cita = citaId
         ? {
-            ...pago.citaId,
-            paciente: pago.citaId.pacienteId,
-            doctor: pago.citaId.doctorId,
+            ...citaId,
+            id: citaId._id?.toString() ?? citaId.id,
+            paciente: citaId.pacienteId,
+            doctor: citaId.doctorId,
           }
-        : null,
-    }));
+        : null;
+
+      return {
+        ...rest,
+        id: _id.toString(),
+        citaId: cita?.id,
+        cita,
+      };
+    });
 
     return { pagos: transformedPagos, total, page, limit };
   }
@@ -70,16 +78,22 @@ class PagoService {
     }
 
     // Transform citaId to cita for compatibility
+    const { _id, __v, citaId, ...rest } = pago;
+    const cita = citaId
+      ? {
+          ...citaId,
+          id: citaId._id?.toString() ?? citaId.id,
+          paciente: citaId.pacienteId,
+          doctor: citaId.doctorId,
+          consultorio: citaId.consultorioId,
+        }
+      : null;
+
     return {
-      ...pago,
-      cita: pago.citaId
-        ? {
-            ...pago.citaId,
-            paciente: pago.citaId.pacienteId,
-            doctor: pago.citaId.doctorId,
-            consultorio: pago.citaId.consultorioId,
-          }
-        : null,
+      ...rest,
+      id: _id.toString(),
+      citaId: cita?.id,
+      cita,
     };
   }
 
@@ -88,9 +102,9 @@ class PagoService {
    */
   async createPago(data) {
     // Validate cita exists
-    const cita = await Cita.findById(data.citaId);
+    const citaExists = await Cita.findById(data.citaId);
 
-    if (!cita) {
+    if (!citaExists) {
       throw new NotFoundError('Cita not found');
     }
 
@@ -110,15 +124,21 @@ class PagoService {
       .lean();
 
     // Transform citaId to cita for compatibility
+    const { _id, __v, citaId, ...rest } = populatedPago;
+    const citaRef = citaId
+      ? {
+          ...citaId,
+          id: citaId._id?.toString() ?? citaId.id,
+          paciente: citaId.pacienteId,
+          doctor: citaId.doctorId,
+        }
+      : null;
+
     return {
-      ...populatedPago,
-      cita: populatedPago.citaId
-        ? {
-            ...populatedPago.citaId,
-            paciente: populatedPago.citaId.pacienteId,
-            doctor: populatedPago.citaId.doctorId,
-          }
-        : null,
+      ...rest,
+      id: _id.toString(),
+      citaId: citaRef?.id,
+      cita: citaRef,
     };
   }
 
@@ -149,15 +169,21 @@ class PagoService {
     }
 
     // Transform citaId to cita for compatibility
+    const { _id, __v, citaId, ...rest } = updatedPago;
+    const citaRef = citaId
+      ? {
+          ...citaId,
+          id: citaId._id?.toString() ?? citaId.id,
+          paciente: citaId.pacienteId,
+          doctor: citaId.doctorId,
+        }
+      : null;
+
     return {
-      ...updatedPago,
-      cita: updatedPago.citaId
-        ? {
-            ...updatedPago.citaId,
-            paciente: updatedPago.citaId.pacienteId,
-            doctor: updatedPago.citaId.doctorId,
-          }
-        : null,
+      ...rest,
+      id: _id.toString(),
+      citaId: citaRef?.id,
+      cita: citaRef,
     };
   }
 

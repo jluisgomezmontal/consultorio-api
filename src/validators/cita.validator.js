@@ -1,10 +1,16 @@
 import { z } from 'zod';
 
+const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+
+const objectIdSchema = z
+  .string()
+  .regex(objectIdRegex, 'Invalid ObjectId');
+
 export const createCitaSchema = z.object({
   body: z.object({
-    pacienteId: z.string().uuid('Invalid paciente ID'),
-    doctorId: z.string().uuid('Invalid doctor ID'),
-    consultorioId: z.string().uuid('Invalid consultorio ID'),
+    pacienteId: objectIdSchema,
+    doctorId: objectIdSchema,
+    consultorioId: objectIdSchema,
     date: z.string().refine((val) => !isNaN(Date.parse(val)), {
       message: 'Invalid date format',
     }),
@@ -20,9 +26,9 @@ export const createCitaSchema = z.object({
 
 export const updateCitaSchema = z.object({
   body: z.object({
-    pacienteId: z.string().uuid('Invalid paciente ID').optional(),
-    doctorId: z.string().uuid('Invalid doctor ID').optional(),
-    consultorioId: z.string().uuid('Invalid consultorio ID').optional(),
+    pacienteId: objectIdSchema.optional(),
+    doctorId: objectIdSchema.optional(),
+    consultorioId: objectIdSchema.optional(),
     date: z.string().refine((val) => !isNaN(Date.parse(val)), {
       message: 'Invalid date format',
     }).optional(),
@@ -35,22 +41,22 @@ export const updateCitaSchema = z.object({
     notas: z.string().optional(),
   }),
   params: z.object({
-    id: z.string().uuid('Invalid cita ID'),
+    id: objectIdSchema,
   }),
 });
 
 export const getCitaSchema = z.object({
   params: z.object({
-    id: z.string().uuid('Invalid cita ID'),
+    id: objectIdSchema,
   }),
 });
 
 export const listCitasSchema = z.object({
   query: z.object({
     search: z.string().trim().optional(),
-    doctorId: z.string().uuid().optional(),
-    pacienteId: z.string().uuid().optional(),
-    consultorioId: z.string().uuid().optional(),
+    doctorId: objectIdSchema.optional(),
+    pacienteId: objectIdSchema.optional(),
+    consultorioId: objectIdSchema.optional(),
     estado: z.enum(['pendiente', 'confirmada', 'completada', 'cancelada']).optional(),
     dateFrom: z.string().optional(),
     dateTo: z.string().optional(),
