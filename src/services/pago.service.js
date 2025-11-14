@@ -15,8 +15,24 @@ class PagoService {
 
     if (filters.dateFrom || filters.dateTo) {
       filter.fechaPago = {};
-      if (filters.dateFrom) filter.fechaPago.$gte = new Date(filters.dateFrom);
-      if (filters.dateTo) filter.fechaPago.$lte = new Date(filters.dateTo);
+
+      if (filters.dateFrom) {
+        const fromInput = filters.dateFrom.includes('T')
+          ? filters.dateFrom
+          : `${filters.dateFrom}T00:00:00`;
+        const fromDate = new Date(fromInput);
+        fromDate.setHours(fromDate.getHours(), 0, 0, 0);
+        filter.fechaPago.$gte = fromDate;
+      }
+
+      if (filters.dateTo) {
+        const toInput = filters.dateTo.includes('T')
+          ? filters.dateTo
+          : `${filters.dateTo}T23:59:59`;
+        const toDate = new Date(toInput);
+        toDate.setHours(toDate.getHours(), 59, 59, 999);
+        filter.fechaPago.$lte = toDate;
+      }
     }
 
     const [pagos, total] = await Promise.all([

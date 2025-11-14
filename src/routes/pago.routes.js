@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import pagoController from '../controllers/pago.controller.js';
-import { authenticate } from '../middlewares/auth.js';
+import { authenticate, authorizeStaff, authorize } from '../middlewares/auth.js';
 import { validate } from '../middlewares/validation.js';
 import {
   createPagoSchema,
@@ -14,22 +14,22 @@ const router = Router();
 // All routes require authentication
 router.use(authenticate);
 
-// Get all pagos with filters
-router.get('/', validate(listPagosSchema), pagoController.getAllPagos);
+// Get all pagos with filters (staff: recepcionista, doctor, admin)
+router.get('/', authorizeStaff, validate(listPagosSchema), pagoController.getAllPagos);
 
-// Get income report
-router.get('/ingresos', pagoController.getIncomeReport);
+// Get income report (staff: recepcionista, doctor, admin)
+router.get('/ingresos', authorizeStaff, pagoController.getIncomeReport);
 
-// Get pago by ID
-router.get('/:id', validate(getPagoSchema), pagoController.getPagoById);
+// Get pago by ID (staff: recepcionista, doctor, admin)
+router.get('/:id', authorizeStaff, validate(getPagoSchema), pagoController.getPagoById);
 
-// Create pago
-router.post('/', validate(createPagoSchema), pagoController.createPago);
+// Create pago (staff: recepcionista, doctor, admin)
+router.post('/', authorizeStaff, validate(createPagoSchema), pagoController.createPago);
 
-// Update pago
-router.put('/:id', validate(updatePagoSchema), pagoController.updatePago);
+// Update pago (staff: recepcionista, doctor, admin)
+router.put('/:id', authorizeStaff, validate(updatePagoSchema), pagoController.updatePago);
 
-// Delete pago
-router.delete('/:id', validate(getPagoSchema), pagoController.deletePago);
+// Delete pago (admin only)
+router.delete('/:id', authorize('admin'), validate(getPagoSchema), pagoController.deletePago);
 
 export default router;

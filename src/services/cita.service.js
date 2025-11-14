@@ -28,11 +28,23 @@ class CitaService {
 
     if (filters.dateFrom || filters.dateTo) {
       filter.date = {};
+
       if (filters.dateFrom) {
-        filter.date.$gte = new Date(filters.dateFrom);
+        const fromInput = filters.dateFrom.includes('T')
+          ? filters.dateFrom
+          : `${filters.dateFrom}T00:00:00`;
+        const fromDate = new Date(fromInput);
+        fromDate.setHours(fromDate.getHours(), 0, 0, 0);
+        filter.date.$gte = fromDate;
       }
+
       if (filters.dateTo) {
-        filter.date.$lte = new Date(filters.dateTo);
+        const toInput = filters.dateTo.includes('T')
+          ? filters.dateTo
+          : `${filters.dateTo}T23:59:59`;
+        const toDate = new Date(toInput);
+        toDate.setHours(toDate.getHours(), 59, 59, 999);
+        filter.date.$lte = toDate;
       }
     }
 

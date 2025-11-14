@@ -96,3 +96,9 @@ export const checkConsultorioAccess = (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Authorize staff (recepcionista, doctor, admin) for operational tasks
+ * Use this for endpoints that require staff permissions
+ */
+export const authorizeStaff = authorize('admin', 'doctor', 'recepcionista');

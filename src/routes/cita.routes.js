@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import citaController from '../controllers/cita.controller.js';
-import { authenticate } from '../middlewares/auth.js';
+import { authenticate, authorizeStaff, authorize } from '../middlewares/auth.js';
 import { validate } from '../middlewares/validation.js';
 import {
   createCitaSchema,
@@ -14,25 +14,25 @@ const router = Router();
 // All routes require authentication
 router.use(authenticate);
 
-// Get all citas with filters
-router.get('/', validate(listCitasSchema), citaController.getAllCitas);
+// Get all citas with filters (staff: recepcionista, doctor, admin)
+router.get('/', authorizeStaff, validate(listCitasSchema), citaController.getAllCitas);
 
-// Get calendar view
-router.get('/calendario', citaController.getCalendar);
+// Get calendar view (staff: recepcionista, doctor, admin)
+router.get('/calendario', authorizeStaff, citaController.getCalendar);
 
-// Get cita by ID
-router.get('/:id', validate(getCitaSchema), citaController.getCitaById);
+// Get cita by ID (staff: recepcionista, doctor, admin)
+router.get('/:id', authorizeStaff, validate(getCitaSchema), citaController.getCitaById);
 
-// Create cita
-router.post('/', validate(createCitaSchema), citaController.createCita);
+// Create cita (staff: recepcionista, doctor, admin)
+router.post('/', authorizeStaff, validate(createCitaSchema), citaController.createCita);
 
-// Update cita
-router.put('/:id', validate(updateCitaSchema), citaController.updateCita);
+// Update cita (staff: recepcionista, doctor, admin)
+router.put('/:id', authorizeStaff, validate(updateCitaSchema), citaController.updateCita);
 
-// Cancel cita
-router.patch('/:id/cancelar', validate(getCitaSchema), citaController.cancelCita);
+// Cancel cita (staff: recepcionista, doctor, admin)
+router.patch('/:id/cancelar', authorizeStaff, validate(getCitaSchema), citaController.cancelCita);
 
-// Delete cita
-router.delete('/:id', validate(getCitaSchema), citaController.deleteCita);
+// Delete cita (admin only)
+router.delete('/:id', authorize('admin'), validate(getCitaSchema), citaController.deleteCita);
 
 export default router;

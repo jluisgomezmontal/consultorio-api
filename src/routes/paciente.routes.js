@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import pacienteController from '../controllers/paciente.controller.js';
-import { authenticate } from '../middlewares/auth.js';
+import { authenticate, authorizeStaff, authorize } from '../middlewares/auth.js';
 import { validate } from '../middlewares/validation.js';
 import {
   createPacienteSchema,
@@ -14,25 +14,25 @@ const router = Router();
 // All routes require authentication
 router.use(authenticate);
 
-// Get all pacientes with search
-router.get('/', validate(searchPacientesSchema), pacienteController.getAllPacientes);
+// Get all pacientes with search (staff: recepcionista, doctor, admin)
+router.get('/', authorizeStaff, validate(searchPacientesSchema), pacienteController.getAllPacientes);
 
-// Search pacientes
-router.get('/search', pacienteController.searchPacientes);
+// Search pacientes (staff: recepcionista, doctor, admin)
+router.get('/search', authorizeStaff, pacienteController.searchPacientes);
 
-// Get paciente by ID
-router.get('/:id', validate(getPacienteSchema), pacienteController.getPacienteById);
+// Get paciente by ID (staff: recepcionista, doctor, admin)
+router.get('/:id', authorizeStaff, validate(getPacienteSchema), pacienteController.getPacienteById);
 
-// Get paciente history
-router.get('/:id/historial', validate(getPacienteSchema), pacienteController.getPacienteHistory);
+// Get paciente history (staff: recepcionista, doctor, admin)
+router.get('/:id/historial', authorizeStaff, validate(getPacienteSchema), pacienteController.getPacienteHistory);
 
-// Create paciente
-router.post('/', validate(createPacienteSchema), pacienteController.createPaciente);
+// Create paciente (staff: recepcionista, doctor, admin)
+router.post('/', authorizeStaff, validate(createPacienteSchema), pacienteController.createPaciente);
 
-// Update paciente
-router.put('/:id', validate(updatePacienteSchema), pacienteController.updatePaciente);
+// Update paciente (staff: recepcionista, doctor, admin)
+router.put('/:id', authorizeStaff, validate(updatePacienteSchema), pacienteController.updatePaciente);
 
-// Delete paciente
-router.delete('/:id', validate(getPacienteSchema), pacienteController.deletePaciente);
+// Delete paciente (admin only)
+router.delete('/:id', authorize('admin'), validate(getPacienteSchema), pacienteController.deletePaciente);
 
 export default router;
