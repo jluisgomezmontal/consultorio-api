@@ -4,11 +4,20 @@ import { NotFoundError, ConflictError, BadRequestError } from '../utils/errors.j
 class CitaService {
   /**
    * Get all citas with filters and pagination
+   * @param {Object} filters - Filter options
+   * @param {Number} page - Page number
+   * @param {Number} limit - Items per page
+   * @param {Object} consultorioFilter - MongoDB filter for consultorio restriction (from middleware)
    */
-  async getAllCitas(filters = {}, page = 1, limit = 10) {
+  async getAllCitas(filters = {}, page = 1, limit = 10, consultorioFilter = null) {
     const skip = (page - 1) * limit;
 
     const filter = {};
+
+    // Apply consultorio filter if provided (for non-admin users)
+    if (consultorioFilter) {
+      Object.assign(filter, consultorioFilter);
+    }
 
     if (filters.doctorId) {
       filter.doctorId = filters.doctorId;
@@ -111,16 +120,25 @@ class CitaService {
 
   /**
    * Get cita by ID
+   * @param {String} id - Cita ID
+   * @param {Object} consultorioFilter - MongoDB filter for consultorio restriction (from middleware)
    */
-  async getCitaById(id) {
-    const cita = await Cita.findById(id)
+  async getCitaById(id, consultorioFilter = null) {
+    const filter = { _id: id };
+    
+    // Apply consultorio filter if provided (for non-admin users)
+    if (consultorioFilter) {
+      Object.assign(filter, consultorioFilter);
+    }
+
+    const cita = await Cita.findOne(filter)
       .populate('pacienteId')
       .populate('doctorId', 'id name email role')
       .populate('consultorioId')
       .lean();
 
     if (!cita) {
-      throw new NotFoundError('Cita not found');
+      throw new NotFoundError('Cita not found or access denied');
     }
 
     // Get pagos
@@ -154,8 +172,10 @@ class CitaService {
 
   /**
    * Create new cita with conflict validation
+   * @param {Object} data - Cita data
+   * @param {Object} user - Authenticated user (from req.user)
    */
-  async createCita(data) {
+  async createCita(data, user = null) {
     // Validate paciente exists
     const paciente = await Paciente.findById(data.pacienteId);
     if (!paciente) {
@@ -175,6 +195,14 @@ class CitaService {
     const consultorio = await Consultorio.findById(data.consultorioId);
     if (!consultorio) {
       throw new NotFoundError('Consultorio not found');
+    }
+
+    // Validate consultorio access for non-admin users
+    if (user && user.role !== 'admin') {
+      const userConsultorios = user.consultoriosIds || [];
+      if (!userConsultorios.includes(data.consultorioId)) {
+        throw new BadRequestError('You do not have access to create appointments in this consultorio');
+      }
     }
 
     // Check for schedule conflicts
@@ -221,12 +249,31 @@ class CitaService {
 
   /**
    * Update cita
+   * @param {String} id - Cita ID
+   * @param {Object} data - Update data
+   * @param {Object} consultorioFilter - MongoDB filter for consultorio restriction (from middleware)
+   * @param {Object} user - Authenticated user (from req.user)
    */
-  async updateCita(id, data) {
-    const cita = await Cita.findById(id);
+  async updateCita(id, data, consultorioFilter = null, user = null) {
+    const filter = { _id: id };
+    
+    // Apply consultorio filter if provided (for non-admin users)
+    if (consultorioFilter) {
+      Object.assign(filter, consultorioFilter);
+    }
+
+    const cita = await Cita.findOne(filter);
 
     if (!cita) {
-      throw new NotFoundError('Cita not found');
+      throw new NotFoundError('Cita not found or access denied');
+    }
+
+    // Validate consultorio access if changing consultorio
+    if (data.consultorioId && user && user.role !== 'admin') {
+      const userConsultorios = user.consultoriosIds || [];
+      if (!userConsultorios.includes(data.consultorioId)) {
+        throw new BadRequestError('You do not have access to move appointments to this consultorio');
+      }
     }
 
     // If updating date/time/doctor, check for conflicts
@@ -287,12 +334,21 @@ class CitaService {
 
   /**
    * Cancel cita
+   * @param {String} id - Cita ID
+   * @param {Object} consultorioFilter - MongoDB filter for consultorio restriction (from middleware)
    */
-  async cancelCita(id) {
-    const cita = await Cita.findById(id);
+  async cancelCita(id, consultorioFilter = null) {
+    const filter = { _id: id };
+    
+    // Apply consultorio filter if provided (for non-admin users)
+    if (consultorioFilter) {
+      Object.assign(filter, consultorioFilter);
+    }
+
+    const cita = await Cita.findOne(filter);
 
     if (!cita) {
-      throw new NotFoundError('Cita not found');
+      throw new NotFoundError('Cita not found or access denied');
     }
 
     const updatedCita = await Cita.findByIdAndUpdate(
@@ -324,12 +380,21 @@ class CitaService {
 
   /**
    * Delete cita
+   * @param {String} id - Cita ID
+   * @param {Object} consultorioFilter - MongoDB filter for consultorio restriction (from middleware)
    */
-  async deleteCita(id) {
-    const cita = await Cita.findById(id);
+  async deleteCita(id, consultorioFilter = null) {
+    const filter = { _id: id };
+    
+    // Apply consultorio filter if provided (for non-admin users)
+    if (consultorioFilter) {
+      Object.assign(filter, consultorioFilter);
+    }
+
+    const cita = await Cita.findOne(filter);
 
     if (!cita) {
-      throw new NotFoundError('Cita not found');
+      throw new NotFoundError('Cita not found or access denied');
     }
 
     // Delete all related pagos

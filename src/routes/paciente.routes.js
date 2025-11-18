@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import pacienteController from '../controllers/paciente.controller.js';
-import { authenticate, authorizeStaff, authorize } from '../middlewares/auth.js';
+import { authenticate, authorizeStaff, authorize, applyConsultorioFilter } from '../middlewares/auth.js';
 import { validate } from '../middlewares/validation.js';
 import {
   createPacienteSchema,
@@ -13,6 +13,9 @@ const router = Router();
 
 // All routes require authentication
 router.use(authenticate);
+
+// Apply consultorio filter for non-admin users
+router.use(applyConsultorioFilter);
 
 // Get all pacientes with search (staff: recepcionista, doctor, admin)
 router.get('/', authorizeStaff, validate(searchPacientesSchema), pacienteController.getAllPacientes);

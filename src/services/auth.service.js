@@ -9,7 +9,7 @@ class AuthService {
    */
   async login(email, password) {
     // Get user from database (explicitly select password since it's excluded by default)
-    const user = await User.findOne({ email }).select('+password').populate('consultorioId').lean();
+    const user = await User.findOne({ email }).select('+password').populate('consultoriosIds').lean();
 
     if (!user) {
       throw new UnauthorizedError('Invalid credentials');
@@ -39,6 +39,7 @@ class AuthService {
 
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
+    const consultoriosArray = Array.isArray(user.consultoriosIds) ? user.consultoriosIds : [];
 
     return {
       accessToken,
@@ -47,7 +48,8 @@ class AuthService {
         name: user.name,
         email: user.email,
         role: user.role,
-        consultorio: user.consultorioId,
+        consultoriosIds: consultoriosArray.map(c => c?._id?.toString() || c?.toString() || c),
+        consultorios: consultoriosArray,
       },
     };
   }
@@ -86,15 +88,20 @@ class AuthService {
    * Get current user info
    */
   async getCurrentUser(userId) {
-    const user = await User.findById(userId).populate('consultorioId').lean();
+    const user = await User.findById(userId).populate('consultoriosIds').lean();
 
     if (!user) {
       throw new NotFoundError('User not found');
     }
 
+    const { _id, consultoriosIds, ...rest } = user;
+    const consultoriosArray = Array.isArray(consultoriosIds) ? consultoriosIds : [];
+
     return {
-      ...user,
-      consultorio: user.consultorioId,
+      ...rest,
+      id: _id?.toString(),
+      consultoriosIds: consultoriosArray.map(c => c?._id?.toString() || c?.toString() || c),
+      consultorios: consultoriosArray,
     };
   }
 
@@ -112,23 +119,28 @@ class AuthService {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Ensure consultoriosIds is an array
+    const consultoriosIds = Array.isArray(userData.consultoriosIds) ? userData.consultoriosIds : [];
+
     // Create user in database
     const user = await User.create({
       email,
       password: hashedPassword,
       name: userData.name,
       role: userData.role,
-      consultorioId: userData.consultorioId,
+      consultoriosIds: consultoriosIds,
     });
 
-    const populatedUser = await User.findById(user._id).populate('consultorioId').lean();
+    const populatedUser = await User.findById(user._id).populate('consultoriosIds').lean();
 
     // Remove password from response
-    const { password: _, ...userWithoutPassword } = populatedUser;
+    const { password: _, consultoriosIds: consultorios, ...userWithoutPassword } = populatedUser;
+    const consultoriosArray = Array.isArray(consultorios) ? consultorios : [];
 
     return {
       ...userWithoutPassword,
-      consultorio: populatedUser.consultorioId,
+      consultoriosIds: consultoriosArray.map(c => c?._id?.toString() || c?.toString() || c),
+      consultorios: consultoriosArray,
     };
   }
 

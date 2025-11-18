@@ -27,10 +27,11 @@ const userSchema = new mongoose.Schema(
       default: 'recepcionista',
       index: true,
     },
-    consultorioId: {
-      type: mongoose.Schema.Types.ObjectId,
+    consultoriosIds: {
+      type: [mongoose.Schema.Types.ObjectId],
       ref: 'Consultorio',
       required: true,
+      default: [],
       index: true,
     },
   },

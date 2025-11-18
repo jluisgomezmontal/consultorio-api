@@ -105,15 +105,25 @@ class PacienteService {
 
   /**
    * Get paciente medical history with all citas
+   * @param {String} id - Paciente ID
+   * @param {Object} consultorioFilter - MongoDB filter for consultorio restriction (from middleware)
    */
-  async getPacienteHistory(id) {
+  async getPacienteHistory(id, consultorioFilter = null) {
     const pacienteDoc = await Paciente.findById(id).lean();
 
     if (!pacienteDoc) {
       throw new NotFoundError('Paciente not found');
     }
 
-    const citas = await Cita.find({ pacienteId: id })
+    // Build filter for citas
+    const citasFilter = { pacienteId: id };
+    
+    // Apply consultorio filter if provided (for non-admin users)
+    if (consultorioFilter) {
+      Object.assign(citasFilter, consultorioFilter);
+    }
+
+    const citas = await Cita.find(citasFilter)
       .populate('doctorId', 'id name email')
       .populate('consultorioId', 'id name')
       .sort({ date: -1 })

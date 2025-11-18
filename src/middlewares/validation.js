@@ -39,6 +39,18 @@ export const sanitizeInput = (req, res, next) => {
   const sanitizeObject = (obj) => {
     if (!obj || typeof obj !== 'object') return obj;
     
+    // Preserve arrays
+    if (Array.isArray(obj)) {
+      return obj.map((item) => {
+        if (typeof item === 'string') {
+          return sanitizeString(item);
+        } else if (typeof item === 'object') {
+          return sanitizeObject(item);
+        }
+        return item;
+      });
+    }
+    
     const sanitized = {};
     for (const key in obj) {
       if (typeof obj[key] === 'string') {

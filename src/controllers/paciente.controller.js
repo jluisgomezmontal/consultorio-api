@@ -76,7 +76,7 @@ class PacienteController {
   async getPacienteHistory(req, res, next) {
     try {
       const { id } = req.params;
-      const history = await pacienteService.getPacienteHistory(id);
+      const history = await pacienteService.getPacienteHistory(id, req.consultorioFilter);
       return successResponse(res, history);
     } catch (error) {
       next(error);

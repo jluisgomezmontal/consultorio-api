@@ -24,7 +24,7 @@ export const authenticate = async (req, res, next) => {
 
     // Get user from database
     const dbUser = await User.findById(decoded.id)
-      .populate('consultorioId')
+      .populate('consultoriosIds')
       .lean();
 
     if (!dbUser) {
@@ -37,8 +37,8 @@ export const authenticate = async (req, res, next) => {
       email: dbUser.email,
       name: dbUser.name,
       role: dbUser.role,
-      consultorioId: dbUser.consultorioId?._id?.toString() || dbUser.consultorioId,
-      consultorio: dbUser.consultorioId,
+      consultoriosIds: (dbUser.consultoriosIds || []).map(c => c?._id?.toString() || c),
+      consultorios: dbUser.consultoriosIds || [],
     };
 
     next();
@@ -73,7 +73,7 @@ export const authorize = (...allowedRoles) => {
 };
 
 /**
- * Check if user belongs to the same consultorio or is admin
+ * Check if user has access to specific consultorio or is admin
  */
 export const checkConsultorioAccess = (req, res, next) => {
   try {
@@ -87,8 +87,38 @@ export const checkConsultorioAccess = (req, res, next) => {
       return next();
     }
 
-    if (req.user.consultorioId !== consultorioId) {
+    if (!req.user.consultoriosIds.includes(consultorioId)) {
       throw new ForbiddenError('Access denied to this consultorio');
+    }
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Add consultorio filter to request for non-admin users
+ * This middleware injects consultorio filter automatically based on user's assigned consultorios
+ */
+export const applyConsultorioFilter = (req, res, next) => {
+  try {
+    if (!req.user) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    // Admins can see all resources, no filter needed
+    if (req.user.role === 'admin') {
+      req.consultorioFilter = null;
+      return next();
+    }
+
+    // For doctors and recepcionistas, filter by their assigned consultorios
+    if (req.user.consultoriosIds && req.user.consultoriosIds.length > 0) {
+      req.consultorioFilter = { consultorioId: { $in: req.user.consultoriosIds } };
+    } else {
+      // User has no consultorios assigned, they can't see anything
+      req.consultorioFilter = { consultorioId: null };
     }
 
     next();

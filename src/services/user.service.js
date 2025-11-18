@@ -11,34 +11,30 @@ class UserService {
 
     const filter = {};
     if (consultorioId) {
-      filter.consultorioId = consultorioId;
+      filter.consultoriosIds = consultorioId;
     }
 
     const [users, total] = await Promise.all([
       User.find(filter)
         .skip(skip)
         .limit(limit)
-        .populate('consultorioId')
+        .populate('consultoriosIds')
         .sort({ createdAt: -1 })
         .lean(),
       User.countDocuments(filter),
     ]);
 
-    // Transform consultorioId to consultorio for compatibility
+    // Transform consultoriosIds to consultorios
     const transformedUsers = users.map((user) => {
-      const { _id, consultorioId, ...rest } = user;
+      const { _id, consultoriosIds, ...rest } = user;
       
-      const consultorioObject =
-        consultorioId && typeof consultorioId === 'object' && '_id' in consultorioId
-          ? consultorioId
-          : null;
+      const consultoriosArray = Array.isArray(consultoriosIds) ? consultoriosIds : [];
 
       return {
         ...rest,
         id: _id?.toString?.() ?? user.id,
-        consultorioId:
-          consultorioObject?._id?.toString?.() ?? consultorioId?.toString?.() ?? null,
-        consultorio: consultorioObject,
+        consultoriosIds: consultoriosArray.map(c => c?._id?.toString() || c?.toString() || c),
+        consultorios: consultoriosArray,
       };
     });
 
@@ -49,26 +45,22 @@ class UserService {
    * Get user by ID
    */
   async getUserById(id) {
-    const user = await User.findById(id).populate('consultorioId').lean();
+    const user = await User.findById(id).populate('consultoriosIds').lean();
 
     if (!user) {
       throw new NotFoundError('User not found');
     }
 
-    // Transform consultorioId to consultorio for compatibility
-    const { _id, consultorioId, ...rest } = user;
+    // Transform consultoriosIds to consultorios
+    const { _id, consultoriosIds, ...rest } = user;
     
-    const consultorioObject =
-      consultorioId && typeof consultorioId === 'object' && '_id' in consultorioId
-        ? consultorioId
-        : null;
+    const consultoriosArray = Array.isArray(consultoriosIds) ? consultoriosIds : [];
 
     return {
       ...rest,
       id: _id?.toString?.() ?? user.id,
-      consultorioId:
-        consultorioObject?._id?.toString?.() ?? consultorioId?.toString?.() ?? null,
-      consultorio: consultorioObject,
+      consultoriosIds: consultoriosArray.map(c => c?._id?.toString() || c?.toString() || c),
+      consultorios: consultoriosArray,
     };
   }
 
@@ -76,11 +68,15 @@ class UserService {
    * Create new user
    */
   async createUser(data, password) {
-    // Check if consultorio exists
-    const consultorio = await Consultorio.findById(data.consultorioId);
+    // Ensure consultoriosIds is an array
+    const consultoriosIds = Array.isArray(data.consultoriosIds) ? data.consultoriosIds : [];
 
-    if (!consultorio) {
-      throw new NotFoundError('Consultorio not found');
+    // Check if all consultorios exist
+    if (consultoriosIds.length > 0) {
+      const consultorios = await Consultorio.find({ _id: { $in: consultoriosIds } });
+      if (consultorios.length !== consultoriosIds.length) {
+        throw new NotFoundError('One or more consultorios not found');
+      }
     }
 
     // Check if user already exists
@@ -98,18 +94,18 @@ class UserService {
       password: hashedPassword,
       name: data.name,
       role: data.role,
-      consultorioId: data.consultorioId,
+      consultoriosIds: consultoriosIds,
     });
 
-    const populatedUser = await User.findById(user._id).populate('consultorioId').lean();
+    const populatedUser = await User.findById(user._id).populate('consultoriosIds').lean();
 
     // Remove password from response
-    const { password: _, ...userWithoutPassword } = populatedUser;
+    const { password: _, consultoriosIds: consultorios, ...userWithoutPassword } = populatedUser;
 
-    // Transform consultorioId to consultorio for compatibility
     return {
       ...userWithoutPassword,
-      consultorio: populatedUser.consultorioId,
+      consultoriosIds: (consultorios || []).map(c => c?._id?.toString() || c?.toString() || c),
+      consultorios: consultorios || [],
     };
   }
 
@@ -123,12 +119,12 @@ class UserService {
       throw new NotFoundError('User not found');
     }
 
-    // If changing consultorio, verify it exists
-    if (data.consultorioId && data.consultorioId !== user.consultorioId.toString()) {
-      const consultorio = await Consultorio.findById(data.consultorioId);
+    // If changing consultorios, verify they exist
+    if (data.consultoriosIds && Array.isArray(data.consultoriosIds)) {
+      const consultorios = await Consultorio.find({ _id: { $in: data.consultoriosIds } });
 
-      if (!consultorio) {
-        throw new NotFoundError('Consultorio not found');
+      if (consultorios.length !== data.consultoriosIds.length) {
+        throw new NotFoundError('One or more consultorios not found');
       }
     }
 
@@ -136,13 +132,16 @@ class UserService {
       new: true,
       runValidators: true,
     })
-      .populate('consultorioId')
+      .populate('consultoriosIds')
       .lean();
 
-    // Transform consultorioId to consultorio for compatibility
+    const { consultoriosIds, ...rest } = updatedUser;
+    const consultoriosArray = Array.isArray(consultoriosIds) ? consultoriosIds : [];
+
     return {
-      ...updatedUser,
-      consultorio: updatedUser.consultorioId,
+      ...rest,
+      consultoriosIds: consultoriosArray.map(c => c?._id?.toString() || c?.toString() || c),
+      consultorios: consultoriosArray,
     };
   }
 
@@ -172,13 +171,19 @@ class UserService {
    * Get users by consultorio
    */
   async getUsersByConsultorio(consultorioId) {
-    const users = await User.find({ consultorioId }).populate('consultorioId').lean();
+    const users = await User.find({ consultoriosIds: consultorioId }).populate('consultoriosIds').lean();
 
-    // Transform consultorioId to consultorio for compatibility
-    return users.map((user) => ({
-      ...user,
-      consultorio: user.consultorioId,
-    }));
+    return users.map((user) => {
+      const { _id, consultoriosIds, ...rest } = user;
+      const consultoriosArray = Array.isArray(consultoriosIds) ? consultoriosIds : [];
+
+      return {
+        ...rest,
+        id: _id?.toString?.() ?? user.id,
+        consultoriosIds: consultoriosArray.map(c => c?._id?.toString() || c?.toString() || c),
+        consultorios: consultoriosArray,
+      };
+    });
   }
 
   /**
@@ -187,26 +192,20 @@ class UserService {
   async getDoctors(consultorioId = null) {
     const filter = { role: 'doctor' };
     if (consultorioId) {
-      filter.consultorioId = consultorioId;
+      filter.consultoriosIds = consultorioId;
     }
 
-    const doctors = await User.find(filter).populate('consultorioId').lean();
+    const doctors = await User.find(filter).populate('consultoriosIds').lean();
 
-    // Transform lean documents to include id field and populated consultorio info
     return doctors.map((doctor) => {
-      const { _id, consultorioId, ...rest } = doctor;
-
-      const consultorioObject =
-        consultorioId && typeof consultorioId === 'object' && '_id' in consultorioId
-          ? consultorioId
-          : null;
+      const { _id, consultoriosIds, ...rest } = doctor;
+      const consultoriosArray = Array.isArray(consultoriosIds) ? consultoriosIds : [];
 
       return {
         ...rest,
         id: _id?.toString?.() ?? doctor.id,
-        consultorioId:
-          consultorioObject?._id?.toString?.() ?? consultorioId?.toString?.() ?? null,
-        consultorio: consultorioObject,
+        consultoriosIds: consultoriosArray.map(c => c?._id?.toString() || c?.toString() || c),
+        consultorios: consultoriosArray,
       };
     });
   }

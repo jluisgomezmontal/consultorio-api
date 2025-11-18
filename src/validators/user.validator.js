@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+const objectIdSchema = z
+  .string()
+  .regex(/^[0-9a-fA-F]{24}$/u, 'Invalid ObjectId');
+
 export const createUserSchema = z.object({
   body: z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -7,7 +11,11 @@ export const createUserSchema = z.object({
     role: z.enum(['admin', 'doctor', 'recepcionista'], {
       errorMap: () => ({ message: 'Role must be admin, doctor, or recepcionista' }),
     }),
-    consultorioId: z.string().uuid('Invalid consultorio ID'),
+    consultoriosIds: z
+      .array(objectIdSchema, {
+        required_error: 'At least one consultorio is required',
+      })
+      .min(1, 'At least one consultorio is required'),
   }),
 });
 
@@ -16,15 +24,18 @@ export const updateUserSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters').optional(),
     email: z.string().email('Invalid email format').optional(),
     role: z.enum(['admin', 'doctor', 'recepcionista']).optional(),
-    consultorioId: z.string().uuid('Invalid consultorio ID').optional(),
+    consultoriosIds: z
+      .array(objectIdSchema)
+      .min(1, 'At least one consultorio is required')
+      .optional(),
   }),
   params: z.object({
-    id: z.string().uuid('Invalid user ID'),
+    id: objectIdSchema,
   }),
 });
 
 export const getUserSchema = z.object({
   params: z.object({
-    id: z.string().uuid('Invalid user ID'),
+    id: objectIdSchema,
   }),
 });

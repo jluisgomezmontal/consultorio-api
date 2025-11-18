@@ -32,7 +32,8 @@ class CitaController {
       const result = await citaService.getAllCitas(
         filters,
         parseInt(page),
-        parseInt(limit)
+        parseInt(limit),
+        req.consultorioFilter // Pass filter from middleware
       );
 
       return paginatedResponse(res, result.citas, result.page, result.limit, result.total);
@@ -47,7 +48,7 @@ class CitaController {
   async getCitaById(req, res, next) {
     try {
       const { id } = req.params;
-      const cita = await citaService.getCitaById(id);
+      const cita = await citaService.getCitaById(id, req.consultorioFilter);
       return successResponse(res, cita);
     } catch (error) {
       next(error);
@@ -59,7 +60,7 @@ class CitaController {
    */
   async createCita(req, res, next) {
     try {
-      const cita = await citaService.createCita(req.body);
+      const cita = await citaService.createCita(req.body, req.user);
       return createdResponse(res, cita, 'Cita created successfully');
     } catch (error) {
       next(error);
@@ -72,7 +73,7 @@ class CitaController {
   async updateCita(req, res, next) {
     try {
       const { id } = req.params;
-      const cita = await citaService.updateCita(id, req.body);
+      const cita = await citaService.updateCita(id, req.body, req.consultorioFilter, req.user);
       return successResponse(res, cita, 'Cita updated successfully');
     } catch (error) {
       next(error);
@@ -85,7 +86,7 @@ class CitaController {
   async cancelCita(req, res, next) {
     try {
       const { id } = req.params;
-      const cita = await citaService.cancelCita(id);
+      const cita = await citaService.cancelCita(id, req.consultorioFilter);
       return successResponse(res, cita, 'Cita cancelled successfully');
     } catch (error) {
       next(error);
@@ -98,7 +99,7 @@ class CitaController {
   async deleteCita(req, res, next) {
     try {
       const { id } = req.params;
-      const result = await citaService.deleteCita(id);
+      const result = await citaService.deleteCita(id, req.consultorioFilter);
       return successResponse(res, result, result.message);
     } catch (error) {
       next(error);
