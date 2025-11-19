@@ -1,6 +1,39 @@
 import { Cita, Paciente, User, Consultorio, Pago } from '../models/index.js';
 import { NotFoundError, ConflictError, BadRequestError } from '../utils/errors.js';
 
+// Helper to parse a YYYY-MM-DD string as a local date (avoids UTC shifting one day back)
+function parseLocalDate(dateInput) {
+  if (!dateInput) return null;
+
+  if (dateInput instanceof Date) {
+    return new Date(
+      dateInput.getFullYear(),
+      dateInput.getMonth(),
+      dateInput.getDate(),
+      0,
+      0,
+      0,
+      0
+    );
+  }
+
+  if (typeof dateInput === 'string') {
+    // If it already includes time, let JS handle it normally
+    if (dateInput.includes('T')) {
+      return new Date(dateInput);
+    }
+
+    const [year, month, day] = dateInput.split('-').map((part) => Number(part));
+    if (!year || !month || !day) {
+      return new Date(dateInput);
+    }
+
+    return new Date(year, month - 1, day, 0, 0, 0, 0);
+  }
+
+  return new Date(dateInput);
+}
+
 class CitaService {
   /**
    * Get all citas with filters and pagination
@@ -205,23 +238,24 @@ class CitaService {
       }
     }
 
-    // Check for schedule conflicts
+    // Normalize date to local day and check for schedule conflicts
+    const normalizedCreateDate = parseLocalDate(data.date);
     const conflictingCita = await this.checkScheduleConflict(
       data.doctorId,
-      data.date,
+      normalizedCreateDate,
       data.time
     );
 
     if (conflictingCita) {
       throw new ConflictError(
-        `Doctor already has an appointment at ${data.time} on ${new Date(data.date).toLocaleDateString()}`
+        `Doctor already has an appointment at ${data.time} on ${normalizedCreateDate.toLocaleDateString()}`
       );
     }
 
     // Create cita
     const cita = await Cita.create({
       ...data,
-      date: new Date(data.date),
+      date: normalizedCreateDate,
     });
 
     const populatedCita = await Cita.findById(cita._id)
@@ -279,7 +313,7 @@ class CitaService {
     // If updating date/time/doctor, check for conflicts
     if (data.date || data.time || data.doctorId) {
       const doctorId = data.doctorId || cita.doctorId;
-      const date = data.date || cita.date;
+      const date = data.date ? parseLocalDate(data.date) : cita.date;
       const time = data.time || cita.time;
 
       const conflictingCita = await this.checkScheduleConflict(
@@ -291,7 +325,7 @@ class CitaService {
 
       if (conflictingCita) {
         throw new ConflictError(
-          `Doctor already has an appointment at ${time} on ${new Date(date).toLocaleDateString()}`
+          `Doctor already has an appointment at ${time} on ${date.toLocaleDateString()}`
         );
       }
     }
@@ -299,7 +333,7 @@ class CitaService {
     // Update cita
     const updateData = { ...data };
     if (data.date) {
-      updateData.date = new Date(data.date);
+      updateData.date = parseLocalDate(data.date);
     }
 
     const updatedCita = await Cita.findByIdAndUpdate(id, updateData, {
@@ -409,7 +443,7 @@ class CitaService {
    * Check for schedule conflicts
    */
   async checkScheduleConflict(doctorId, date, time, excludeCitaId = null) {
-    const dateObj = new Date(date);
+    const dateObj = parseLocalDate(date);
     dateObj.setHours(0, 0, 0, 0);
 
     const nextDay = new Date(dateObj);
