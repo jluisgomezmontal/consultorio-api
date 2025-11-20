@@ -16,7 +16,7 @@ class ConsultorioService {
     // Get counts for each consultorio
     const consultoriosWithCounts = await Promise.all(
       consultoriosRaw.map(async (consultorio) => {
-        const usersCount = await User.countDocuments({ consultorioId: consultorio._id });
+        const usersCount = await User.countDocuments({ consultoriosIds: consultorio._id });
         const citasCount = await Cita.countDocuments({ consultorioId: consultorio._id });
         const { _id, __v, ...rest } = consultorio;
         return {
@@ -45,7 +45,7 @@ class ConsultorioService {
 
     // Get users and citas count
     const [users, citasCount] = await Promise.all([
-      User.find({ consultorioId: id }).lean(),
+      User.find({ consultoriosIds: id }).lean(),
       Cita.countDocuments({ consultorioId: id }),
     ]);
 
@@ -113,7 +113,7 @@ class ConsultorioService {
     const citaIds = citas.map((cita) => cita._id);
     await Pago.deleteMany({ citaId: { $in: citaIds } });
     await Cita.deleteMany({ consultorioId: id });
-    await User.deleteMany({ consultorioId: id });
+    await User.deleteMany({ consultoriosIds: id });
     await Consultorio.findByIdAndDelete(id);
 
     return { message: 'Consultorio deleted successfully' };
@@ -129,7 +129,7 @@ class ConsultorioService {
       throw new NotFoundError('Consultorio not found');
     }
 
-    const users = await User.find({ consultorioId: id }).lean();
+    const users = await User.find({ consultoriosIds: id }).lean();
 
     // Get citas statistics
     const today = new Date();
