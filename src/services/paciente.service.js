@@ -4,8 +4,12 @@ import { NotFoundError } from '../utils/errors.js';
 class PacienteService {
   /**
    * Get all pacientes with pagination and search
+   * @param {Number} page - Page number
+   * @param {Number} limit - Items per page
+   * @param {String} search - Search term
+   * @param {Object} consultorioFilter - MongoDB filter for consultorio restriction (from middleware)
    */
-  async getAllPacientes(page = 1, limit = 10, search = '') {
+  async getAllPacientes(page = 1, limit = 10, search = '', consultorioFilter = null) {
     const skip = (page - 1) * limit;
 
     const filter = search
@@ -17,6 +21,11 @@ class PacienteService {
           ],
         }
       : {};
+
+    // Apply consultorio filter if provided (for non-admin users)
+    if (consultorioFilter) {
+      Object.assign(filter, consultorioFilter);
+    }
 
     const [pacientesRaw, total] = await Promise.all([
       Paciente.find(filter).skip(skip).limit(limit).sort({ createdAt: -1 }).lean(),
@@ -36,12 +45,21 @@ class PacienteService {
 
   /**
    * Get paciente by ID
+   * @param {String} id - Paciente ID
+   * @param {Object} consultorioFilter - MongoDB filter for consultorio restriction (from middleware)
    */
-  async getPacienteById(id) {
-    const pacienteDoc = await Paciente.findById(id).lean();
+  async getPacienteById(id, consultorioFilter = null) {
+    const filter = { _id: id };
+    
+    // Apply consultorio filter if provided (for non-admin users)
+    if (consultorioFilter) {
+      Object.assign(filter, consultorioFilter);
+    }
+
+    const pacienteDoc = await Paciente.findOne(filter).lean();
 
     if (!pacienteDoc) {
-      throw new NotFoundError('Paciente not found');
+      throw new NotFoundError('Paciente not found or access denied');
     }
 
     // Count citas for this paciente
@@ -57,6 +75,7 @@ class PacienteService {
 
   /**
    * Create new paciente
+   * @param {Object} data - Paciente data (must include consultorioId)
    */
   async createPaciente(data) {
     const paciente = await Paciente.create(data);
@@ -65,15 +84,25 @@ class PacienteService {
 
   /**
    * Update paciente
+   * @param {String} id - Paciente ID
+   * @param {Object} data - Update data
+   * @param {Object} consultorioFilter - MongoDB filter for consultorio restriction (from middleware)
    */
-  async updatePaciente(id, data) {
-    const paciente = await Paciente.findByIdAndUpdate(id, data, {
+  async updatePaciente(id, data, consultorioFilter = null) {
+    const filter = { _id: id };
+    
+    // Apply consultorio filter if provided (for non-admin users)
+    if (consultorioFilter) {
+      Object.assign(filter, consultorioFilter);
+    }
+
+    const paciente = await Paciente.findOneAndUpdate(filter, data, {
       new: true,
       runValidators: true,
     }).lean();
 
     if (!paciente) {
-      throw new NotFoundError('Paciente not found');
+      throw new NotFoundError('Paciente not found or access denied');
     }
 
     const { _id, __v, ...rest } = paciente;
@@ -86,12 +115,21 @@ class PacienteService {
 
   /**
    * Delete paciente
+   * @param {String} id - Paciente ID
+   * @param {Object} consultorioFilter - MongoDB filter for consultorio restriction (from middleware)
    */
-  async deletePaciente(id) {
-    const paciente = await Paciente.findByIdAndDelete(id);
+  async deletePaciente(id, consultorioFilter = null) {
+    const filter = { _id: id };
+    
+    // Apply consultorio filter if provided (for non-admin users)
+    if (consultorioFilter) {
+      Object.assign(filter, consultorioFilter);
+    }
+
+    const paciente = await Paciente.findOneAndDelete(filter);
 
     if (!paciente) {
-      throw new NotFoundError('Paciente not found');
+      throw new NotFoundError('Paciente not found or access denied');
     }
 
     // Delete all related citas and their pagos
@@ -167,15 +205,24 @@ class PacienteService {
 
   /**
    * Search pacientes by name, phone, or email
+   * @param {String} query - Search query
+   * @param {Object} consultorioFilter - MongoDB filter for consultorio restriction (from middleware)
    */
-  async searchPacientes(query) {
-    const pacientes = await Paciente.find({
+  async searchPacientes(query, consultorioFilter = null) {
+    const filter = {
       $or: [
         { fullName: { $regex: query, $options: 'i' } },
         { phone: { $regex: query, $options: 'i' } },
         { email: { $regex: query, $options: 'i' } },
       ],
-    })
+    };
+
+    // Apply consultorio filter if provided (for non-admin users)
+    if (consultorioFilter) {
+      Object.assign(filter, consultorioFilter);
+    }
+
+    const pacientes = await Paciente.find(filter)
       .limit(20)
       .lean();
 

@@ -44,6 +44,12 @@ const pacienteSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    consultorioId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Consultorio',
+      required: true,
+      index: true,
+    },
   },
   {
     timestamps: true,

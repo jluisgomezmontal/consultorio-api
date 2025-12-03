@@ -26,7 +26,8 @@ class PagoController {
       const result = await pagoService.getAllPagos(
         filters,
         parseInt(page),
-        parseInt(limit)
+        parseInt(limit),
+        req.consultorioFilter
       );
 
       return paginatedResponse(res, result.pagos, result.page, result.limit, result.total);
@@ -41,7 +42,7 @@ class PagoController {
   async getPagoById(req, res, next) {
     try {
       const { id } = req.params;
-      const pago = await pagoService.getPagoById(id);
+      const pago = await pagoService.getPagoById(id, req.consultorioFilter);
       return successResponse(res, pago);
     } catch (error) {
       next(error);
@@ -66,7 +67,7 @@ class PagoController {
   async updatePago(req, res, next) {
     try {
       const { id } = req.params;
-      const pago = await pagoService.updatePago(id, req.body);
+      const pago = await pagoService.updatePago(id, req.body, req.consultorioFilter);
       return successResponse(res, pago, 'Pago updated successfully');
     } catch (error) {
       next(error);
@@ -79,7 +80,7 @@ class PagoController {
   async deletePago(req, res, next) {
     try {
       const { id } = req.params;
-      const result = await pagoService.deletePago(id);
+      const result = await pagoService.deletePago(id, req.consultorioFilter);
       return successResponse(res, result, result.message);
     } catch (error) {
       next(error);

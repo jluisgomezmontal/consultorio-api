@@ -45,11 +45,11 @@ class AuthController {
    */
   async register(req, res, next) {
     try {
-      const { email, password, name, role, consultorioId } = req.body;
+      const { email, password, name, role, consultoriosIds } = req.body;
       const user = await authService.register(email, password, {
         name,
         role,
-        consultorioId,
+        consultoriosIds,
       });
       return createdResponse(res, user, 'User registered successfully');
     } catch (error) {

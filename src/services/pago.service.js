@@ -4,11 +4,20 @@ import { NotFoundError } from '../utils/errors.js';
 class PagoService {
   /**
    * Get all pagos with filters and pagination
+   * @param {Object} filters - Filter options
+   * @param {Number} page - Page number
+   * @param {Number} limit - Items per page
+   * @param {Object} consultorioFilter - MongoDB filter for consultorio restriction (from middleware)
    */
-  async getAllPagos(filters = {}, page = 1, limit = 10) {
+  async getAllPagos(filters = {}, page = 1, limit = 10, consultorioFilter = null) {
     const skip = (page - 1) * limit;
 
     const filter = {};
+
+    // Apply consultorio filter if provided (for non-admin users)
+    if (consultorioFilter) {
+      Object.assign(filter, consultorioFilter);
+    }
 
     if (filters.citaId) filter.citaId = filters.citaId;
     if (filters.estatus) filter.estatus = filters.estatus;
@@ -76,9 +85,18 @@ class PagoService {
 
   /**
    * Get pago by ID
+   * @param {String} id - Pago ID
+   * @param {Object} consultorioFilter - MongoDB filter for consultorio restriction (from middleware)
    */
-  async getPagoById(id) {
-    const pago = await Pago.findById(id)
+  async getPagoById(id, consultorioFilter = null) {
+    const filter = { _id: id };
+    
+    // Apply consultorio filter if provided (for non-admin users)
+    if (consultorioFilter) {
+      Object.assign(filter, consultorioFilter);
+    }
+
+    const pago = await Pago.findOne(filter)
       .populate({
         path: 'citaId',
         populate: [
@@ -90,7 +108,7 @@ class PagoService {
       .lean();
 
     if (!pago) {
-      throw new NotFoundError('Pago not found');
+      throw new NotFoundError('Pago not found or access denied');
     }
 
     // Transform citaId to cita for compatibility
@@ -115,9 +133,10 @@ class PagoService {
 
   /**
    * Create new pago
+   * @param {Object} data - Pago data
    */
   async createPago(data) {
-    // Validate cita exists
+    // Validate cita exists and get consultorioId from it
     const citaExists = await Cita.findById(data.citaId);
 
     if (!citaExists) {
@@ -126,6 +145,7 @@ class PagoService {
 
     const pago = await Pago.create({
       ...data,
+      consultorioId: citaExists.consultorioId, // Auto-assign from cita
       fechaPago: data.fechaPago ? new Date(data.fechaPago) : new Date(),
     });
 
@@ -160,14 +180,24 @@ class PagoService {
 
   /**
    * Update pago
+   * @param {String} id - Pago ID
+   * @param {Object} data - Update data
+   * @param {Object} consultorioFilter - MongoDB filter for consultorio restriction (from middleware)
    */
-  async updatePago(id, data) {
+  async updatePago(id, data, consultorioFilter = null) {
+    const filter = { _id: id };
+    
+    // Apply consultorio filter if provided (for non-admin users)
+    if (consultorioFilter) {
+      Object.assign(filter, consultorioFilter);
+    }
+
     const updateData = { ...data };
     if (data.fechaPago) {
       updateData.fechaPago = new Date(data.fechaPago);
     }
 
-    const updatedPago = await Pago.findByIdAndUpdate(id, updateData, {
+    const updatedPago = await Pago.findOneAndUpdate(filter, updateData, {
       new: true,
       runValidators: true,
     })
@@ -181,7 +211,7 @@ class PagoService {
       .lean();
 
     if (!updatedPago) {
-      throw new NotFoundError('Pago not found');
+      throw new NotFoundError('Pago not found or access denied');
     }
 
     // Transform citaId to cita for compatibility
@@ -205,12 +235,21 @@ class PagoService {
 
   /**
    * Delete pago
+   * @param {String} id - Pago ID
+   * @param {Object} consultorioFilter - MongoDB filter for consultorio restriction (from middleware)
    */
-  async deletePago(id) {
-    const pago = await Pago.findByIdAndDelete(id);
+  async deletePago(id, consultorioFilter = null) {
+    const filter = { _id: id };
+    
+    // Apply consultorio filter if provided (for non-admin users)
+    if (consultorioFilter) {
+      Object.assign(filter, consultorioFilter);
+    }
+
+    const pago = await Pago.findOneAndDelete(filter);
 
     if (!pago) {
-      throw new NotFoundError('Pago not found');
+      throw new NotFoundError('Pago not found or access denied');
     }
 
     return { message: 'Pago deleted successfully' };

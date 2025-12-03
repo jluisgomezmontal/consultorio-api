@@ -11,7 +11,8 @@ class PacienteController {
       const result = await pacienteService.getAllPacientes(
         parseInt(page),
         parseInt(limit),
-        search
+        search,
+        req.consultorioFilter
       );
       return paginatedResponse(res, result.pacientes, result.page, result.limit, result.total);
     } catch (error) {
@@ -25,7 +26,7 @@ class PacienteController {
   async getPacienteById(req, res, next) {
     try {
       const { id } = req.params;
-      const paciente = await pacienteService.getPacienteById(id);
+      const paciente = await pacienteService.getPacienteById(id, req.consultorioFilter);
       return successResponse(res, paciente);
     } catch (error) {
       next(error);
@@ -50,7 +51,7 @@ class PacienteController {
   async updatePaciente(req, res, next) {
     try {
       const { id } = req.params;
-      const paciente = await pacienteService.updatePaciente(id, req.body);
+      const paciente = await pacienteService.updatePaciente(id, req.body, req.consultorioFilter);
       return successResponse(res, paciente, 'Paciente updated successfully');
     } catch (error) {
       next(error);
@@ -63,7 +64,7 @@ class PacienteController {
   async deletePaciente(req, res, next) {
     try {
       const { id } = req.params;
-      const result = await pacienteService.deletePaciente(id);
+      const result = await pacienteService.deletePaciente(id, req.consultorioFilter);
       return successResponse(res, result, result.message);
     } catch (error) {
       next(error);
@@ -89,7 +90,7 @@ class PacienteController {
   async searchPacientes(req, res, next) {
     try {
       const { q } = req.query;
-      const pacientes = await pacienteService.searchPacientes(q || '');
+      const pacientes = await pacienteService.searchPacientes(q || '', req.consultorioFilter);
       return successResponse(res, pacientes);
     } catch (error) {
       next(error);

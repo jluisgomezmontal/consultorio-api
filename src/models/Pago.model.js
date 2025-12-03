@@ -8,6 +8,12 @@ const pagoSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    consultorioId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Consultorio',
+      required: true,
+      index: true,
+    },
     monto: {
       type: Number,
       required: true,

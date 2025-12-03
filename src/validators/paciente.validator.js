@@ -9,6 +9,7 @@ const objectIdSchema = z
 export const createPacienteSchema = z.object({
   body: z.object({
     fullName: z.string().min(2, 'Full name must be at least 2 characters'),
+    consultorioId: objectIdSchema,
     age: z.number().int().positive().optional(),
     gender: z.enum(['masculino', 'femenino', 'otro']).optional(),
     phone: z.string().optional(),

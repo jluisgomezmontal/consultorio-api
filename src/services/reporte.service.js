@@ -1,4 +1,5 @@
 import { Cita, Pago, Paciente, User } from '../models/index.js';
+import mongoose from 'mongoose';
 
 class ReporteService {
   /**
@@ -14,7 +15,10 @@ class ReporteService {
     }
 
     if (consultorioId) {
-      filter.consultorioId = consultorioId;
+      const objectId = mongoose.Types.ObjectId.isValid(consultorioId) 
+        ? new mongoose.Types.ObjectId(consultorioId)
+        : consultorioId;
+      filter.consultorioId = objectId;
     }
 
     const [
@@ -96,7 +100,12 @@ class ReporteService {
   async getIngresosReport(dateFrom, dateTo, consultorioId = null, doctorId = null) {
     // Get citas matching criteria
     const citaFilter = {};
-    if (consultorioId) citaFilter.consultorioId = consultorioId;
+    if (consultorioId) {
+      const objectId = mongoose.Types.ObjectId.isValid(consultorioId) 
+        ? new mongoose.Types.ObjectId(consultorioId)
+        : consultorioId;
+      citaFilter.consultorioId = objectId;
+    }
     if (doctorId) citaFilter.doctorId = doctorId;
 
     const matchingCitas = await Cita.find(citaFilter).select('_id doctorId').lean();
@@ -197,7 +206,16 @@ class ReporteService {
     const thirtyDaysAgo = new Date(now);
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const citaFilter = consultorioId ? { consultorioId } : {};
+    // Convert consultorioId to ObjectId if it's a string
+    let citaFilter = {};
+    let pacienteFilter = {};
+    if (consultorioId) {
+      const objectId = mongoose.Types.ObjectId.isValid(consultorioId) 
+        ? new mongoose.Types.ObjectId(consultorioId)
+        : consultorioId;
+      citaFilter = { consultorioId: objectId };
+      pacienteFilter = { consultorioId: objectId };
+    }
 
     const [
       totalPacientes,
@@ -205,8 +223,9 @@ class ReporteService {
       pacientesRecurrentesResult,
       pacientesPorGenero,
     ] = await Promise.all([
-      Paciente.countDocuments(),
+      Paciente.countDocuments(pacienteFilter),
       Paciente.countDocuments({
+        ...pacienteFilter,
         createdAt: { $gte: thirtyDaysAgo },
       }),
       Cita.aggregate([
@@ -227,6 +246,7 @@ class ReporteService {
         },
       ]),
       Paciente.aggregate([
+        { $match: pacienteFilter },
         {
           $group: {
             _id: '$gender',
@@ -257,7 +277,18 @@ class ReporteService {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const filter = consultorioId ? { consultorioId } : {};
+    console.log('📊 Dashboard Summary - consultorioId recibido:', consultorioId, 'tipo:', typeof consultorioId);
+    
+    // Convert consultorioId to ObjectId if it's a string
+    let filter = {};
+    if (consultorioId) {
+      const objectId = mongoose.Types.ObjectId.isValid(consultorioId) 
+        ? new mongoose.Types.ObjectId(consultorioId)
+        : consultorioId;
+      filter = { consultorioId: objectId };
+    }
+    
+    console.log('📊 Dashboard Summary - filter:', filter);
 
     const [
       citasHoy,
@@ -276,9 +307,14 @@ class ReporteService {
         ...filter,
         estado: 'pendiente',
       }),
-      Paciente.countDocuments(),
+      Paciente.countDocuments(filter),
       Cita.find(consultorioId ? { consultorioId } : {}).select('_id').lean(),
     ]);
+
+    console.log('📊 Resultados:');
+    console.log('  - citasHoy:', citasHoy);
+    console.log('  - citasPendientes:', citasPendientes);
+    console.log('  - totalPacientes:', totalPacientes);
 
     // Get ingresos for today
     const citaIds = citasForIngresos.map((c) => c._id);
@@ -301,12 +337,15 @@ class ReporteService {
       },
     ]);
 
-    return {
+    const result = {
       citasHoy,
       citasPendientes,
       totalPacientes,
       ingresosHoy: ingresosResult[0]?.total || 0,
     };
+
+    console.log('📊 Dashboard Summary - Resultado final:', result);
+    return result;
   }
 }
 
