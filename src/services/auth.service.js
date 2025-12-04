@@ -15,6 +15,11 @@ class AuthService {
       throw new UnauthorizedError('Invalid credentials');
     }
 
+    // Check if user is active
+    if (!user.isActive) {
+      throw new UnauthorizedError('Account is deactivated. Please contact the administrator.');
+    }
+
     // Verify password
     if (!user.password) {
       throw new UnauthorizedError('Invalid credentials');
@@ -65,6 +70,11 @@ class AuthService {
       
       if (!user) {
         throw new UnauthorizedError('User not found');
+      }
+
+      // Check if user is active
+      if (!user.isActive) {
+        throw new UnauthorizedError('Account is deactivated. Please contact the administrator.');
       }
 
       // Generate new token

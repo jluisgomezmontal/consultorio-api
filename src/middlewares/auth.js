@@ -31,6 +31,11 @@ export const authenticate = async (req, res, next) => {
       throw new UnauthorizedError('User not found in system');
     }
 
+    // Check if user is active
+    if (!dbUser.isActive) {
+      throw new UnauthorizedError('Account is deactivated. Please contact the administrator.');
+    }
+
     // Attach user to request
     req.user = {
       id: dbUser._id.toString(),

@@ -228,6 +228,35 @@ class UserService {
 
     return { message: 'Password updated successfully' };
   }
+
+  /**
+   * Toggle user active status (activate/deactivate)
+   */
+  async toggleUserStatus(id, isActive) {
+    const user = await User.findById(id);
+
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+
+    // Update user status
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { isActive },
+      { new: true, runValidators: true }
+    )
+      .populate('consultoriosIds')
+      .lean();
+
+    const { consultoriosIds, ...rest } = updatedUser;
+    const consultoriosArray = Array.isArray(consultoriosIds) ? consultoriosIds : [];
+
+    return {
+      ...rest,
+      consultoriosIds: consultoriosArray.map(c => c?._id?.toString() || c?.toString() || c),
+      consultorios: consultoriosArray,
+    };
+  }
 }
 
 export default new UserService();

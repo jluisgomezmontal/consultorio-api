@@ -97,6 +97,21 @@ class UserController {
       next(error);
     }
   }
+
+  /**
+   * Toggle user active status
+   */
+  async toggleUserStatus(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { isActive } = req.body;
+      const user = await userService.toggleUserStatus(id, isActive);
+      const message = isActive ? 'User activated successfully' : 'User deactivated successfully';
+      return successResponse(res, user, message);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new UserController();

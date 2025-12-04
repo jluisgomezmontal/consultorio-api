@@ -34,6 +34,12 @@ const userSchema = new mongoose.Schema(
       default: [],
       index: true,
     },
+    isActive: {
+      type: Boolean,
+      required: true,
+      default: true,
+      index: true,
+    },
   },
   {
     timestamps: true,
