@@ -2,7 +2,7 @@ import { Router } from 'express';
 import userController from '../controllers/user.controller.js';
 import { authenticate, authorize } from '../middlewares/auth.js';
 import { validate } from '../middlewares/validation.js';
-import { createUserSchema, updateUserSchema, getUserSchema } from '../validators/user.validator.js';
+import { createUserSchema, updateUserSchema, getUserSchema, updatePasswordSchema } from '../validators/user.validator.js';
 
 const router = Router();
 
@@ -23,6 +23,9 @@ router.post('/', authorize('admin'), validate(createUserSchema), userController.
 
 // Update user (admin only)
 router.put('/:id', authorize('admin'), validate(updateUserSchema), userController.updateUser);
+
+// Update user password (admin only)
+router.patch('/:id/password', authorize('admin'), validate(updatePasswordSchema), userController.updatePassword);
 
 // Delete user (admin only)
 router.delete('/:id', authorize('admin'), validate(getUserSchema), userController.deleteUser);

@@ -39,3 +39,12 @@ export const getUserSchema = z.object({
     id: objectIdSchema,
   }),
 });
+
+export const updatePasswordSchema = z.object({
+  body: z.object({
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+  }),
+  params: z.object({
+    id: objectIdSchema,
+  }),
+});

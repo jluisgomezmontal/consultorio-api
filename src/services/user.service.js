@@ -209,6 +209,25 @@ class UserService {
       };
     });
   }
+
+  /**
+   * Update user password
+   */
+  async updatePassword(id, newPassword) {
+    const user = await User.findById(id);
+
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await User.findByIdAndUpdate(id, { password: hashedPassword });
+
+    return { message: 'Password updated successfully' };
+  }
 }
 
 export default new UserService();
