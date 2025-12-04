@@ -6,6 +6,7 @@ import pacienteRoutes from './paciente.routes.js';
 import citaRoutes from './cita.routes.js';
 import pagoRoutes from './pago.routes.js';
 import reporteRoutes from './reporte.routes.js';
+import documentoRoutes from './documento.routes.js';
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use('/pacientes', pacienteRoutes);
 router.use('/citas', citaRoutes);
 router.use('/pagos', pagoRoutes);
 router.use('/reportes', reporteRoutes);
+router.use('/documentos', documentoRoutes);
 
 export default router;

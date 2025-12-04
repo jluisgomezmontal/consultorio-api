@@ -190,15 +190,33 @@ class CitaService {
     const doctorRef = doctorId;
     const consultorioRef = consultorioId;
 
+    // Transform paciente to include id field
+    const pacienteTransformed = pacienteRef ? {
+      ...pacienteRef,
+      id: pacienteRef._id?.toString() || pacienteRef.id,
+    } : null;
+
+    // Transform doctor to include id field
+    const doctorTransformed = doctorRef ? {
+      ...doctorRef,
+      id: doctorRef._id?.toString() || doctorRef.id,
+    } : null;
+
+    // Transform consultorio to include id field
+    const consultorioTransformed = consultorioRef ? {
+      ...consultorioRef,
+      id: consultorioRef._id?.toString() || consultorioRef.id,
+    } : null;
+
     return {
       ...rest,
       id: _id.toString(),
-      pacienteId: pacienteRef?.id || pacienteRef?._id?.toString(),
-      doctorId: doctorRef?.id || doctorRef?._id?.toString(),
-      consultorioId: consultorioRef?.id || consultorioRef?._id?.toString(),
-      paciente: pacienteRef,
-      doctor: doctorRef,
-      consultorio: consultorioRef,
+      pacienteId: pacienteRef?._id?.toString() || pacienteRef?.id,
+      doctorId: doctorRef?._id?.toString() || doctorRef?.id,
+      consultorioId: consultorioRef?._id?.toString() || consultorioRef?.id,
+      paciente: pacienteTransformed,
+      doctor: doctorTransformed,
+      consultorio: consultorioTransformed,
       pagos,
     };
   }
