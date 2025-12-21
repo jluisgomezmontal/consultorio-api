@@ -72,6 +72,66 @@ class UserController {
   }
 
   /**
+   * Update own profile
+   */
+  async updateOwnProfile(req, res, next) {
+    try {
+      const userId = req.user.id;
+      const user = await userService.updateOwnProfile(userId, req.body);
+      return successResponse(res, user, 'Profile updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update own password
+   */
+  async updateOwnPassword(req, res, next) {
+    try {
+      const userId = req.user.id;
+      const { currentPassword, newPassword } = req.body;
+      const result = await userService.updateOwnPassword(userId, currentPassword, newPassword);
+      return successResponse(res, result, result.message);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update receptionist (doctor only)
+   */
+  async updateReceptionist(req, res, next) {
+    try {
+      const { id } = req.params;
+      const doctorId = req.user.id;
+      const receptionist = await userService.updateReceptionist(id, doctorId, req.body);
+      return successResponse(res, receptionist, 'Receptionist updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get receptionists by consultorio
+   */
+  async getReceptionistsByConsultorio(req, res, next) {
+    try {
+      const { consultorioId } = req.query;
+      if (!consultorioId) {
+        return res.status(400).json({
+          success: false,
+          message: 'consultorioId is required',
+        });
+      }
+      const receptionists = await userService.getReceptionistsByConsultorio(consultorioId);
+      return successResponse(res, receptionists);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Get doctors
    */
   async getDoctors(req, res, next) {

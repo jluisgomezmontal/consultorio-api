@@ -194,6 +194,134 @@ class ConsultorioService {
       },
     };
   }
+
+  /**
+   * Update clinical history configuration for a consultorio
+   */
+  async updateClinicalHistoryConfig(id, config) {
+    const consultorio = await Consultorio.findByIdAndUpdate(
+      id,
+      { clinicalHistoryConfig: config },
+      {
+        new: true,
+        runValidators: true,
+      }
+    ).lean();
+
+    if (!consultorio) {
+      throw new NotFoundError('Consultorio not found');
+    }
+
+    const { _id, __v, ...rest } = consultorio;
+
+    return {
+      ...rest,
+      id: _id.toString(),
+    };
+  }
+
+  /**
+   * Get clinical history configuration for a consultorio
+   */
+  async getClinicalHistoryConfig(id) {
+    const consultorio = await Consultorio.findById(id).select('clinicalHistoryConfig').lean();
+
+    if (!consultorio) {
+      throw new NotFoundError('Consultorio not found');
+    }
+
+    const defaultConfig = {
+      antecedentesHeredofamiliares: true,
+      antecedentesPersonalesPatologicos: true,
+      antecedentesPersonalesNoPatologicos: true,
+      ginecoObstetricos: true,
+    };
+
+    return consultorio.clinicalHistoryConfig || defaultConfig;
+  }
+
+  /**
+   * Update consultorio basic info (doctor only)
+   */
+  async updateConsultorioBasicInfo(id, userId, data, imageFile = null) {
+    const consultorio = await Consultorio.findById(id);
+
+    if (!consultorio) {
+      throw new NotFoundError('Consultorio not found');
+    }
+
+    const user = await User.findById(userId);
+    if (!user || user.role !== 'doctor') {
+      throw new BadRequestError('Only doctors can update consultorio basic info');
+    }
+
+    const hasAccess = user.consultoriosIds.some(cId => cId.toString() === id);
+    if (!hasAccess) {
+      throw new BadRequestError('You do not have access to this consultorio');
+    }
+
+    const updateData = {};
+    if (data.name) updateData.name = data.name;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.address !== undefined) updateData.address = data.address;
+    if (data.phone !== undefined) updateData.phone = data.phone;
+    if (data.openHour) updateData.openHour = data.openHour;
+    if (data.closeHour) updateData.closeHour = data.closeHour;
+
+    if (imageFile) {
+      const s3Service = (await import('./s3.service.js')).default;
+      const { url, key } = await s3Service.uploadFile(imageFile, 'consultorios');
+      
+      if (consultorio.imageUrl && consultorio.s3ImageKey) {
+        try {
+          await s3Service.deleteFile(consultorio.s3ImageKey);
+        } catch (error) {
+          console.error('Error deleting old image:', error);
+        }
+      }
+      
+      updateData.imageUrl = url;
+      updateData.s3ImageKey = key;
+    }
+
+    const updatedConsultorio = await Consultorio.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    }).lean();
+
+    const { _id, ...rest } = updatedConsultorio;
+    return { ...rest, id: _id.toString() };
+  }
+
+  /**
+   * Update receta template (doctor only)
+   */
+  async updateRecetaTemplate(id, userId, templateName) {
+    const consultorio = await Consultorio.findById(id);
+
+    if (!consultorio) {
+      throw new NotFoundError('Consultorio not found');
+    }
+
+    const user = await User.findById(userId);
+    if (!user || user.role !== 'doctor') {
+      throw new BadRequestError('Only doctors can update receta template');
+    }
+
+    const hasAccess = user.consultoriosIds.some(cId => cId.toString() === id);
+    if (!hasAccess) {
+      throw new BadRequestError('You do not have access to this consultorio');
+    }
+
+    const updatedConsultorio = await Consultorio.findByIdAndUpdate(
+      id,
+      { recetaTemplate: templateName },
+      { new: true, runValidators: true }
+    ).lean();
+
+    const { _id, ...rest } = updatedConsultorio;
+    return { ...rest, id: _id.toString() };
+  }
 }
 
 export default new ConsultorioService();

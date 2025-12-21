@@ -2,7 +2,16 @@ import { Router } from 'express';
 import userController from '../controllers/user.controller.js';
 import { authenticate, authorize } from '../middlewares/auth.js';
 import { validate } from '../middlewares/validation.js';
-import { createUserSchema, updateUserSchema, getUserSchema, updatePasswordSchema, toggleUserStatusSchema } from '../validators/user.validator.js';
+import { 
+  createUserSchema, 
+  updateUserSchema, 
+  getUserSchema, 
+  updatePasswordSchema, 
+  toggleUserStatusSchema,
+  updateOwnProfileSchema,
+  updateOwnPasswordSchema,
+  updateReceptionistSchema
+} from '../validators/user.validator.js';
 
 const router = Router();
 
@@ -14,6 +23,18 @@ router.get('/', authorize('admin'), userController.getAllUsers);
 
 // Get doctors (all authenticated users can access)
 router.get('/doctors', userController.getDoctors);
+
+// Get receptionists by consultorio (authenticated users)
+router.get('/receptionists', userController.getReceptionistsByConsultorio);
+
+// Update own profile (authenticated users)
+router.put('/me/profile', validate(updateOwnProfileSchema), userController.updateOwnProfile);
+
+// Update own password (authenticated users)
+router.put('/me/password', validate(updateOwnPasswordSchema), userController.updateOwnPassword);
+
+// Update receptionist (doctors only)
+router.put('/receptionists/:id', authorize('doctor'), validate(updateReceptionistSchema), userController.updateReceptionist);
 
 // Get user by ID
 router.get('/:id', validate(getUserSchema), userController.getUserById);

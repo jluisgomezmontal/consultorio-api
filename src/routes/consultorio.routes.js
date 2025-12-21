@@ -6,7 +6,11 @@ import {
   createConsultorioSchema,
   updateConsultorioSchema,
   getConsultorioSchema,
+  updateClinicalHistoryConfigSchema,
+  updateConsultorioBasicInfoSchema,
+  updateRecetaTemplateSchema,
 } from '../validators/consultorio.validator.js';
+import { upload, handleMulterError } from '../middlewares/upload.js';
 
 const router = Router();
 
@@ -21,6 +25,18 @@ router.get('/:id', validate(getConsultorioSchema), consultorioController.getCons
 
 // Get consultorio summary
 router.get('/:id/resumen', validate(getConsultorioSchema), consultorioController.getConsultorioSummary);
+
+// Get clinical history configuration
+router.get('/:id/clinical-history-config', validate(getConsultorioSchema), consultorioController.getClinicalHistoryConfig);
+
+// Update clinical history configuration (doctor only)
+router.put('/:id/clinical-history-config', authorize('doctor', 'admin'), validate(updateClinicalHistoryConfigSchema), consultorioController.updateClinicalHistoryConfig);
+
+// Update consultorio basic info (doctor only)
+router.put('/:id/basic-info', authorize('doctor'), upload.single('image'), handleMulterError, validate(updateConsultorioBasicInfoSchema), consultorioController.updateConsultorioBasicInfo);
+
+// Update receta template (doctor only)
+router.put('/:id/receta-template', authorize('doctor'), validate(updateRecetaTemplateSchema), consultorioController.updateRecetaTemplate);
 
 // Create consultorio (admin only)
 router.post('/', authorize('admin'), validate(createConsultorioSchema), consultorioController.createConsultorio);

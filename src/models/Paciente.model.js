@@ -44,6 +44,45 @@ const pacienteSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    clinicalHistory: {
+      type: {
+        antecedentesHeredofamiliares: {
+          type: {
+            diabetes: { type: Boolean, default: false },
+            hipertension: { type: Boolean, default: false },
+            cancer: { type: Boolean, default: false },
+            cardiopatias: { type: Boolean, default: false },
+            otros: { type: String, trim: true },
+          },
+          default: {},
+        },
+        antecedentesPersonalesPatologicos: {
+          type: {
+            cirugias: { type: String, trim: true },
+            hospitalizaciones: { type: String, trim: true },
+          },
+          default: {},
+        },
+        antecedentesPersonalesNoPatologicos: {
+          type: {
+            tabaquismo: { type: Boolean, default: false },
+            alcoholismo: { type: Boolean, default: false },
+            actividadFisica: { type: String, trim: true },
+            vacunas: { type: String, trim: true },
+          },
+          default: {},
+        },
+        ginecoObstetricos: {
+          type: {
+            embarazos: { type: Number, min: 0 },
+            partos: { type: Number, min: 0 },
+            cesareas: { type: Number, min: 0 },
+          },
+          default: {},
+        },
+      },
+      default: {},
+    },
     consultorioId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Consultorio',

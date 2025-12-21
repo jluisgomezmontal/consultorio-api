@@ -28,6 +28,45 @@ const consultorioSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    imageUrl: {
+      type: String,
+      trim: true,
+    },
+    s3ImageKey: {
+      type: String,
+      trim: true,
+    },
+    recetaTemplate: {
+      type: String,
+      enum: ['template1', 'template2', 'template3', 'template4', 'template5'],
+      default: 'template1',
+    },
+    clinicalHistoryConfig: {
+      type: {
+        antecedentesHeredofamiliares: {
+          type: Boolean,
+          default: true,
+        },
+        antecedentesPersonalesPatologicos: {
+          type: Boolean,
+          default: true,
+        },
+        antecedentesPersonalesNoPatologicos: {
+          type: Boolean,
+          default: true,
+        },
+        ginecoObstetricos: {
+          type: Boolean,
+          default: true,
+        },
+      },
+      default: {
+        antecedentesHeredofamiliares: true,
+        antecedentesPersonalesPatologicos: true,
+        antecedentesPersonalesNoPatologicos: true,
+        ginecoObstetricos: true,
+      },
+    },
   },
   {
     timestamps: true,

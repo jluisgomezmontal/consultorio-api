@@ -81,6 +81,74 @@ class ConsultorioController {
       next(error);
     }
   }
+
+  /**
+   * Update clinical history configuration
+   */
+  async updateClinicalHistoryConfig(req, res, next) {
+    try {
+      const { id } = req.params;
+      const config = req.body;
+      
+      const consultorio = await consultorioService.updateClinicalHistoryConfig(id, config);
+      
+      return successResponse(res, consultorio, 'Clinical history configuration updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update consultorio basic info (doctor only)
+   */
+  async updateConsultorioBasicInfo(req, res, next) {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+      const imageFile = req.file;
+      
+      const consultorio = await consultorioService.updateConsultorioBasicInfo(
+        id,
+        userId,
+        req.body,
+        imageFile
+      );
+      
+      return successResponse(res, consultorio, 'Consultorio updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update receta template (doctor only)
+   */
+  async updateRecetaTemplate(req, res, next) {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+      const { recetaTemplate } = req.body;
+      
+      const consultorio = await consultorioService.updateRecetaTemplate(id, userId, recetaTemplate);
+      
+      return successResponse(res, consultorio, 'Receta template updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get clinical history configuration
+   */
+  async getClinicalHistoryConfig(req, res, next) {
+    try {
+      const { id } = req.params;
+      const config = await consultorioService.getClinicalHistoryConfig(id);
+      return successResponse(res, config);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new ConsultorioController();

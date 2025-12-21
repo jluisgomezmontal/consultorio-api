@@ -60,3 +60,28 @@ export const toggleUserStatusSchema = z.object({
     id: objectIdSchema,
   }),
 });
+
+export const updateOwnProfileSchema = z.object({
+  body: z.object({
+    name: z.string().min(2, 'Name must be at least 2 characters').optional(),
+    email: z.string().email('Invalid email format').optional(),
+  }),
+});
+
+export const updateOwnPasswordSchema = z.object({
+  body: z.object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    newPassword: z.string().min(6, 'New password must be at least 6 characters'),
+  }),
+});
+
+export const updateReceptionistSchema = z.object({
+  body: z.object({
+    name: z.string().min(2, 'Name must be at least 2 characters').optional(),
+    email: z.string().email('Invalid email format').optional(),
+    password: z.string().min(6, 'Password must be at least 6 characters').optional(),
+  }),
+  params: z.object({
+    id: objectIdSchema,
+  }),
+});

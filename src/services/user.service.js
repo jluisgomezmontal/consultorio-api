@@ -187,6 +187,138 @@ class UserService {
   }
 
   /**
+   * Update own profile (name, email only)
+   */
+  async updateOwnProfile(userId, data) {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+
+    if (data.email) {
+      const existingUser = await User.findOne({ email: data.email, _id: { $ne: userId } });
+      if (existingUser) {
+        throw new BadRequestError('Email already in use');
+      }
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: { name: data.name, email: data.email } },
+      { new: true, runValidators: true }
+    ).populate('consultoriosIds').lean();
+
+    const { password: _, consultoriosIds, ...rest } = updatedUser;
+    const consultoriosArray = Array.isArray(consultoriosIds) ? consultoriosIds : [];
+
+    return {
+      ...rest,
+      consultoriosIds: consultoriosArray.map(c => c?._id?.toString() || c?.toString() || c),
+      consultorios: consultoriosArray,
+    };
+  }
+
+  /**
+   * Update own password
+   */
+  async updateOwnPassword(userId, currentPassword, newPassword) {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+
+    const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+    if (!isValidPassword) {
+      throw new BadRequestError('Current password is incorrect');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await User.findByIdAndUpdate(userId, { password: hashedPassword });
+
+    return { message: 'Password updated successfully' };
+  }
+
+  /**
+   * Update receptionist (doctor only)
+   */
+  async updateReceptionist(receptionistId, doctorId, data) {
+    const receptionist = await User.findById(receptionistId);
+
+    if (!receptionist) {
+      throw new NotFoundError('Receptionist not found');
+    }
+
+    if (receptionist.role !== 'recepcionista') {
+      throw new BadRequestError('User is not a receptionist');
+    }
+
+    const doctor = await User.findById(doctorId);
+    if (!doctor || doctor.role !== 'doctor') {
+      throw new BadRequestError('Only doctors can update receptionists');
+    }
+
+    const sharedConsultorios = receptionist.consultoriosIds.some(cId =>
+      doctor.consultoriosIds.some(dId => dId.toString() === cId.toString())
+    );
+
+    if (!sharedConsultorios) {
+      throw new BadRequestError('You can only update receptionists in your consultorios');
+    }
+
+    const updateData = {};
+    if (data.name) updateData.name = data.name;
+    if (data.email) {
+      const existingUser = await User.findOne({ email: data.email, _id: { $ne: receptionistId } });
+      if (existingUser) {
+        throw new BadRequestError('Email already in use');
+      }
+      updateData.email = data.email;
+    }
+    if (data.password) {
+      updateData.password = await bcrypt.hash(data.password, 10);
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      receptionistId,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).populate('consultoriosIds').lean();
+
+    const { password: _, consultoriosIds, ...rest } = updatedUser;
+    const consultoriosArray = Array.isArray(consultoriosIds) ? consultoriosIds : [];
+
+    return {
+      ...rest,
+      consultoriosIds: consultoriosArray.map(c => c?._id?.toString() || c?.toString() || c),
+      consultorios: consultoriosArray,
+    };
+  }
+
+  /**
+   * Get receptionists by consultorio
+   */
+  async getReceptionistsByConsultorio(consultorioId) {
+    const receptionists = await User.find({
+      role: 'recepcionista',
+      consultoriosIds: consultorioId,
+    }).populate('consultoriosIds').lean();
+
+    return receptionists.map((user) => {
+      const { password: _, _id, consultoriosIds, ...rest } = user;
+      const consultoriosArray = Array.isArray(consultoriosIds) ? consultoriosIds : [];
+
+      return {
+        ...rest,
+        id: _id?.toString?.() ?? user.id,
+        consultoriosIds: consultoriosArray.map(c => c?._id?.toString() || c?.toString() || c),
+        consultorios: consultoriosArray,
+      };
+    });
+  }
+
+  /**
    * Get doctors
    */
   async getDoctors(consultorioId = null) {
