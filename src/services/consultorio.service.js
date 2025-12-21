@@ -43,6 +43,14 @@ class ConsultorioService {
       throw new NotFoundError('Consultorio not found');
     }
 
+    console.log('📋 Getting consultorio by ID:', {
+      id,
+      name: consultorioDoc.name,
+      imageUrl: consultorioDoc.imageUrl,
+      s3ImageKey: consultorioDoc.s3ImageKey,
+      hasImage: !!consultorioDoc.imageUrl,
+    });
+
     // Get users and citas count
     const [users, citasCount] = await Promise.all([
       User.find({ consultoriosIds: id }).lean(),
@@ -269,8 +277,11 @@ class ConsultorioService {
     if (data.closeHour) updateData.closeHour = data.closeHour;
 
     if (imageFile) {
+      console.log('📤 Uploading consultorio image...');
       const s3Service = (await import('./s3.service.js')).default;
       const { url, key } = await s3Service.uploadFile(imageFile, 'consultorios');
+      
+      console.log('✅ Image uploaded successfully:', { url, key });
       
       if (consultorio.imageUrl && consultorio.s3ImageKey) {
         try {
@@ -282,12 +293,20 @@ class ConsultorioService {
       
       updateData.imageUrl = url;
       updateData.s3ImageKey = key;
+      console.log('💾 Saving imageUrl to database:', url);
     }
 
     const updatedConsultorio = await Consultorio.findByIdAndUpdate(id, updateData, {
       new: true,
       runValidators: true,
     }).lean();
+
+    console.log('✅ Consultorio updated in database:', {
+      id: updatedConsultorio._id,
+      name: updatedConsultorio.name,
+      imageUrl: updatedConsultorio.imageUrl,
+      hasImage: !!updatedConsultorio.imageUrl,
+    });
 
     const { _id, ...rest } = updatedConsultorio;
     return { ...rest, id: _id.toString() };

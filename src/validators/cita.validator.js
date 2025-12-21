@@ -6,6 +6,14 @@ const objectIdSchema = z
   .string()
   .regex(objectIdRegex, 'Invalid ObjectId');
 
+const medicamentoSchema = z.object({
+  nombre: z.string().min(1, 'Medication name is required'),
+  dosis: z.string().optional(),
+  frecuencia: z.string().optional(),
+  duracion: z.string().optional(),
+  indicaciones: z.string().optional(),
+});
+
 export const createCitaSchema = z.object({
   body: z.object({
     pacienteId: objectIdSchema,
@@ -18,6 +26,7 @@ export const createCitaSchema = z.object({
     motivo: z.string().optional(),
     diagnostico: z.string().optional(),
     tratamiento: z.string().optional(),
+    medicamentos: z.array(medicamentoSchema).optional(),
     estado: z.enum(['pendiente', 'confirmada', 'completada', 'cancelada']).optional(),
     costo: z.number().positive().optional(),
     notas: z.string().optional(),
@@ -36,6 +45,7 @@ export const updateCitaSchema = z.object({
     motivo: z.string().optional(),
     diagnostico: z.string().optional(),
     tratamiento: z.string().optional(),
+    medicamentos: z.array(medicamentoSchema).optional(),
     estado: z.enum(['pendiente', 'confirmada', 'completada', 'cancelada']).optional(),
     costo: z.number().positive().optional(),
     notas: z.string().optional(),

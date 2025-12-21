@@ -42,6 +42,31 @@ const citaSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    medicamentos: [
+      {
+        nombre: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        dosis: {
+          type: String,
+          trim: true,
+        },
+        frecuencia: {
+          type: String,
+          trim: true,
+        },
+        duracion: {
+          type: String,
+          trim: true,
+        },
+        indicaciones: {
+          type: String,
+          trim: true,
+        },
+      },
+    ],
     estado: {
       type: String,
       required: true,

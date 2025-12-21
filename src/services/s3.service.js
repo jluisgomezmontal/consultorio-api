@@ -22,25 +22,41 @@ class S3Service {
    * Sube un archivo a S3
    */
   async uploadFile(file, folder = 'documentos') {
-    const fileName = this.generateFileName(file.originalname);
-    const key = `${folder}/${fileName}`;
+    try {
+      const fileName = this.generateFileName(file.originalname);
+      const key = `${folder}/${fileName}`;
 
-    const command = new PutObjectCommand({
-      Bucket: S3_BUCKET,
-      Key: key,
-      Body: file.buffer,
-      ContentType: file.mimetype,
-      Metadata: {
-        originalName: file.originalname,
-      },
-    });
+      console.log(`📤 Uploading file to S3: ${key}`);
+      console.log(`   Bucket: ${S3_BUCKET}, Region: ${S3_REGION}`);
 
-    await s3Client.send(command);
+      const command = new PutObjectCommand({
+        Bucket: S3_BUCKET,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+        Metadata: {
+          originalName: file.originalname,
+        },
+      });
 
-    return {
-      key,
-      url: `https://${S3_BUCKET}.s3.${S3_REGION}.amazonaws.com/${key}`,
-    };
+      await s3Client.send(command);
+
+      console.log(`✅ File uploaded successfully: ${key}`);
+
+      return {
+        key,
+        url: `https://${S3_BUCKET}.s3.${S3_REGION}.amazonaws.com/${key}`,
+      };
+    } catch (error) {
+      console.error('❌ S3 Upload Error:', {
+        message: error.message,
+        code: error.Code || error.code,
+        statusCode: error.$metadata?.httpStatusCode,
+        bucket: S3_BUCKET,
+        region: S3_REGION,
+      });
+      throw error;
+    }
   }
 
   /**

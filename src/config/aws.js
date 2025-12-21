@@ -3,6 +3,11 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Validate AWS credentials
+if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+  console.warn('⚠️  AWS credentials not configured. S3 uploads will fail.');
+}
+
 // Configuración del cliente S3
 export const s3Client = new S3Client({
   region: process.env.AWS_REGION || 'us-east-1',
@@ -10,6 +15,8 @@ export const s3Client = new S3Client({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
+  // Add explicit signature version to avoid signature mismatch
+  signatureVersion: 'v4',
 });
 
 export const S3_BUCKET = process.env.AWS_S3_BUCKET || 'consultorio-documentos';

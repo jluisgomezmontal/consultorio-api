@@ -31,6 +31,7 @@ const consultorioSchema = new mongoose.Schema(
     imageUrl: {
       type: String,
       trim: true,
+      default: 'https://miconsultorio.vercel.app/miconsultorio.svg',
     },
     s3ImageKey: {
       type: String,

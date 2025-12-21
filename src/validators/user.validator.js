@@ -28,6 +28,7 @@ export const updateUserSchema = z.object({
       .array(objectIdSchema)
       .min(1, 'At least one consultorio is required')
       .optional(),
+    cedulas: z.array(z.string().min(1, 'Cedula cannot be empty')).optional(),
   }),
   params: z.object({
     id: objectIdSchema,
@@ -65,6 +66,7 @@ export const updateOwnProfileSchema = z.object({
   body: z.object({
     name: z.string().min(2, 'Name must be at least 2 characters').optional(),
     email: z.string().email('Invalid email format').optional(),
+    cedulas: z.array(z.string().min(1, 'Cedula cannot be empty')).optional(),
   }),
 });
 

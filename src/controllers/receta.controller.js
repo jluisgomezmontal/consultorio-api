@@ -11,7 +11,7 @@ class RecetaController {
    */
   async generateReceta(req, res, next) {
     try {
-      const { citaId, diagnostico, medicamentos, indicaciones } = req.body;
+      const { citaId } = req.body;
       const userId = req.user.id;
 
       const cita = await Cita.findById(citaId).lean();
@@ -34,16 +34,24 @@ class RecetaController {
         });
       }
 
+      console.log('🏥 Consultorio data for prescription:', {
+        name: consultorio.name,
+        imageUrl: consultorio.imageUrl,
+        hasImage: !!consultorio.imageUrl,
+      });
+
       const prescriptionData = {
         consultorio: {
           name: consultorio.name,
           address: consultorio.address,
           phone: consultorio.phone,
-          imageUrl: consultorio.imageUrl || null,
+          description: consultorio.description,
+          imageUrl: consultorio.imageUrl || 'https://miconsultorio.vercel.app/miconsultorio.svg',
         },
         doctor: {
           name: doctor.name,
           email: doctor.email,
+          cedulas: doctor.cedulas || [],
         },
         paciente: {
           fullName: paciente.fullName,
@@ -57,10 +65,11 @@ class RecetaController {
           diagnostico: cita.diagnostico,
           tratamiento: cita.tratamiento,
           notas: cita.notas,
+          medicamentos: cita.medicamentos || [],
         },
-        diagnostico,
-        medicamentos,
-        indicaciones,
+        diagnostico: cita.diagnostico,
+        medicamentos: cita.medicamentos || [],
+        indicaciones: cita.notas,
         fecha: new Date().toLocaleDateString('es-MX', {
           year: 'numeric',
           month: 'long',
@@ -68,7 +77,7 @@ class RecetaController {
         }),
       };
 
-      const templateName = consultorio.recetaTemplate || 'classic';
+      const templateName = consultorio.recetaTemplate || 'template1';
       const pdfBuffer = await pdfService.generatePrescriptionPDF(prescriptionData, templateName);
 
       res.setHeader('Content-Type', 'application/pdf');
