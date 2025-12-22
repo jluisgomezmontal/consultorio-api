@@ -2,6 +2,56 @@ import { Paciente, Cita, User, Consultorio, Pago } from '../models/index.js';
 import { NotFoundError } from '../utils/errors.js';
 
 class PacienteService {
+  formatEmptyFields(paciente) {
+    const formatted = { ...paciente };
+
+    if (formatted.address === '' || formatted.address === null || formatted.address === undefined) {
+      formatted.address = 'No registrado';
+    }
+
+    if (formatted.allergies === '' || formatted.allergies === null || formatted.allergies === undefined) {
+      formatted.allergies = 'Sin alergias registradas';
+    }
+
+    if (formatted.medicalHistory === '' || formatted.medicalHistory === null || formatted.medicalHistory === undefined) {
+      formatted.medicalHistory = 'Sin antecedentes médicos registrados';
+    }
+
+    if (formatted.notes === '' || formatted.notes === null || formatted.notes === undefined) {
+      formatted.notes = 'Sin notas adicionales';
+    }
+
+    if (formatted.clinicalHistory) {
+      if (formatted.clinicalHistory.antecedentesHeredofamiliares) {
+        const ahf = formatted.clinicalHistory.antecedentesHeredofamiliares;
+        if (ahf.otros === '' || ahf.otros === null || ahf.otros === undefined) {
+          ahf.otros = 'N/A';
+        }
+      }
+
+      if (formatted.clinicalHistory.antecedentesPersonalesPatologicos) {
+        const app = formatted.clinicalHistory.antecedentesPersonalesPatologicos;
+        if (app.cirugias === '' || app.cirugias === null || app.cirugias === undefined) {
+          app.cirugias = 'Sin cirugías previas';
+        }
+        if (app.hospitalizaciones === '' || app.hospitalizaciones === null || app.hospitalizaciones === undefined) {
+          app.hospitalizaciones = 'Sin hospitalizaciones previas';
+        }
+      }
+
+      if (formatted.clinicalHistory.antecedentesPersonalesNoPatologicos) {
+        const apnp = formatted.clinicalHistory.antecedentesPersonalesNoPatologicos;
+        if (apnp.actividadFisica === '' || apnp.actividadFisica === null || apnp.actividadFisica === undefined) {
+          apnp.actividadFisica = 'No especificado';
+        }
+        if (apnp.vacunas === '' || apnp.vacunas === null || apnp.vacunas === undefined) {
+          apnp.vacunas = 'Esquema de vacunación no registrado';
+        }
+      }
+    }
+
+    return formatted;
+  }
   /**
    * Get all pacientes with pagination and search
    * @param {Number} page - Page number
@@ -66,8 +116,10 @@ class PacienteService {
     const citasCount = await Cita.countDocuments({ pacienteId: id });
     const { _id, __v, ...paciente } = pacienteDoc;
 
+    const formattedPaciente = this.formatEmptyFields(paciente);
+
     return {
-      ...paciente,
+      ...formattedPaciente,
       id: _id.toString(),
       _count: { citas: citasCount },
     };
