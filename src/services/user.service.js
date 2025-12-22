@@ -203,9 +203,14 @@ class UserService {
       }
     }
 
+    const updateData = {};
+    if (data.name) updateData.name = data.name;
+    if (data.email) updateData.email = data.email;
+    if (data.cedulas !== undefined) updateData.cedulas = data.cedulas;
+
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { $set: { name: data.name, email: data.email } },
+      { $set: updateData },
       { new: true, runValidators: true }
     ).populate('consultoriosIds').lean();
 

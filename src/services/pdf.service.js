@@ -162,51 +162,78 @@ class PDFService {
       position: relative;
     }
 
+    /* ================= HEADER ================= */
+
     .header {
       border: 3px solid #2d7a3e;
       border-radius: 8px;
-      padding: 15px;
       margin-bottom: 10px;
+      display: flex;
+      min-height: 110px;
     }
 
-    .header-top {
+    /* LOGO 25% */
+    .header-logo {
+      width: 25%;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1px;
+      justify-content: center;
+      padding: 10px;
     }
 
-    .logo {
-      width: 60px;
-      height: 60px;
+    .header-logo img {
+      max-width: 100%;
+      max-height: 100%;
       object-fit: contain;
     }
 
+    /* DATOS 75% */
+    .header-info {
+      width: 75%;
+      padding: 10px 15px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
     .consultorio-name {
-      text-align: center;
-      flex: 1;
+      padding-left: 30px;
+      text-align: left;
       font-size: 20px;
       font-weight: bold;
       color: #2d7a3e;
       text-transform: uppercase;
+      line-height: 1.2;
+      margin-bottom: 4px;
     }
 
     .doctor-name {
-      text-align: center;
+      padding-left: 30px;
+      text-align: left;
       font-size: 18px;
       font-style: italic;
       color: #1e5a8e;
-      margin-bottom: 5px;
+      margin-bottom: 4px;
+    }
+
+    .consultorio-description {
+      padding-left: 30px;
+      text-align: left;
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 3px;
     }
 
     .specialty {
-      text-align: center;
+      padding-left: 30px;
+      text-align: left;
       font-size: 12px;
       color: #666;
     }
 
+    /* ================= PACIENTE ================= */
+
     .patient-section {
-      border-bottom: 1px solid #ccc;
       padding: 10px 0;
       display: flex;
       justify-content: space-between;
@@ -224,6 +251,8 @@ class PDFService {
       min-width: 200px;
     }
 
+    /* ================= CONTENIDO ================= */
+
     .watermark {
       position: absolute;
       top: 50%;
@@ -231,6 +260,7 @@ class PDFService {
       transform: translate(-50%, -50%);
       opacity: 0.05;
       font-size: 120px;
+      pointer-events: none;
     }
 
     .content-area {
@@ -241,31 +271,7 @@ class PDFService {
       margin-bottom: 20px;
     }
 
-    .footer {
-      border-top: 2px solid #2d7a3e;
-      padding-top: 10px;
-      font-size: 11px;
-      color: #666;
-      text-align: center;
-      display: flex;
-      justify-content: center;
-    }
-
-    .signature {
-      margin-top: 80px;
-      text-align: right;
-    }
-
-    .signature-line {
-      border-top: 2px solid #000;
-      width: 250px;
-      margin-left: auto;
-      margin-bottom: 5px;
-    }
-
-    /* ========================= */
-    /* PRESCRIPCIÓN (2 POR FILA) */
-    /* ========================= */
+    /* ================= MEDICAMENTOS ================= */
 
     .medicamentos-grid {
       display: grid;
@@ -285,6 +291,34 @@ class PDFService {
     .medicamento-item strong {
       color: #1e5a8e;
     }
+
+    /* ================= FIRMA ================= */
+
+    .signature {
+      margin-top: 15px;
+      text-align: right;
+    }
+
+    .signature-line {
+      border-top: 2px solid #000;
+      width: 250px;
+      margin-left: auto;
+      margin-bottom: 5px;
+    }
+
+    /* ================= FOOTER ================= */
+
+    .footer {
+      border-top: 2px solid #2d7a3e;
+      padding-top: 10px;
+      font-size: 11px;
+      color: #666;
+      text-align: center;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+    }
+
   </style>
 </head>
 
@@ -293,14 +327,23 @@ class PDFService {
 
     <!-- HEADER -->
     <div class="header">
-      <div class="header-top">
-        <img src="{{consultorio.imageUrl}}" alt="Logo" class="logo" />
-        <div class="consultorio-name">{{consultorio.name}}</div>
-        <div style="width: 60px;"></div>
+
+      <!-- LOGO -->
+      <div class="header-logo">
+        <img
+          src="{{consultorio.imageUrl}}"
+          alt="Logo"
+        />
       </div>
-      <div class="doctor-name">{{doctor.name}}</div>
-      <div style="text-align: center; font-size: 11px; color: #666; margin-bottom: 3px;">{{consultorio.description}}</div>
-      <div class="specialty">{{doctor.cedulas}}</div>
+
+      <!-- INFO CONSULTORIO -->
+      <div class="header-info">
+        <div class="consultorio-name">{{consultorio.name}}</div>
+        <div class="doctor-name">{{doctor.name}}</div>
+        <div class="consultorio-description">{{consultorio.description}}</div>
+        <div class="specialty">{{doctor.cedulas}}</div>
+      </div>
+
     </div>
 
     <!-- PACIENTE -->
@@ -315,8 +358,8 @@ class PDFService {
       </div>
     </div>
 
-    <div style="display: flex; justify-content: flex-end; margin-bottom: 10px; font-size: 12px; color: #666;">
-      <div style="margin-right: 20px;">Edad: {{paciente.age}}</div>
+    <div style="display:flex; justify-content:flex-end; margin-bottom:10px; font-size:12px; color:#666;">
+      <div style="margin-right:20px;">Edad: {{paciente.age}}</div>
       <div>Sexo: {{paciente.gender}}</div>
     </div>
 
@@ -325,43 +368,30 @@ class PDFService {
     <!-- CONTENIDO -->
     <div class="content-area">
 
-      <!-- MOTIVO -->
-      <div style="margin-bottom: 5px;">
-        <div style="font-weight: bold; color: #2d7a3e; margin-bottom: 3px;">
-          Motivo de Consulta:
-        </div>
-        <div style="padding: 8px; background: #f5f5f5; border-radius: 5px; font-size: 13px;">
+      <div style="margin-bottom:5px;">
+        <div style="font-weight:bold; color:#2d7a3e; margin-bottom:3px;">Motivo de Consulta:</div>
+        <div style="padding:8px; background:#f5f5f5; border-radius:5px; font-size:13px;">
           {{motivo}}
         </div>
       </div>
 
-      <!-- DIAGNÓSTICO -->
-      <div style="margin-bottom: 5px;">
-        <div style="font-weight: bold; color: #2d7a3e; margin-bottom: 3px;">
-          Diagnóstico:
-        </div>
-        <div style="padding: 8px; background: #f5f5f5; border-radius: 5px; font-size: 13px;">
+      <div style="margin-bottom:5px;">
+        <div style="font-weight:bold; color:#2d7a3e; margin-bottom:3px;">Diagnóstico:</div>
+        <div style="padding:8px; background:#f5f5f5; border-radius:5px; font-size:13px;">
           {{diagnostico}}
         </div>
       </div>
 
-      <!-- PRESCRIPCIÓN -->
-      <div style="margin-bottom: 5px;">
-        <div style="font-weight: bold; color: #2d7a3e; margin-bottom: 3px;">
-          Prescripción:
-        </div>
-
+      <div style="margin-bottom:5px;">
+        <div style="font-weight:bold; color:#2d7a3e; margin-bottom:3px;">Prescripción:</div>
         <div class="medicamentos-grid">
           {{medicamentos}}
         </div>
       </div>
 
-      <!-- INDICACIONES -->
-      <div >
-        <div style="font-weight: bold; color: #2d7a3e; margin-bottom: 3px;">
-          Indicaciones y Tratamiento:
-        </div>
-        <div style="padding: 10px; background: #f5f5f5; border-radius: 5px; font-size: 13px;">
+      <div>
+        <div style="font-weight:bold; color:#2d7a3e; margin-bottom:3px;">Indicaciones y Tratamiento:</div>
+        <div style="padding:10px; background:#f5f5f5; border-radius:5px; font-size:13px;">
           {{indicaciones}}
         </div>
       </div>
@@ -371,7 +401,7 @@ class PDFService {
     <!-- FIRMA -->
     <div class="signature">
       <div class="signature-line"></div>
-      <div style="font-weight: bold;">{{doctor.name}}</div>
+      <div style="font-weight:bold;">{{doctor.name}}</div>
     </div>
 
     <!-- FOOTER -->
