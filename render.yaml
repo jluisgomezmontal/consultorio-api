@@ -4,7 +4,9 @@ services:
     env: node
     region: oregon
     plan: free
-    buildCommand: npm install
+    buildCommand: |
+      npm install
+      npx puppeteer browsers install chrome
     startCommand: npm start
     envVars:
       - key: NODE_ENV

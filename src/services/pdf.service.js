@@ -1,6 +1,4 @@
 import puppeteer from 'puppeteer';
-import puppeteerCore from 'puppeteer-core';
-import chromium from '@sparticuz/chromium';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
@@ -10,90 +8,25 @@ const __dirname = path.dirname(__filename);
 
 class PDFService {
   /**
-   * Convert image URL to base64 using fetch
-   */
-  async imageToBase64(url) {
-    if (!url || url.startsWith('data:')) {
-      return url;
-    }
-
-    try {
-      console.log('📥 Fetching image:', url);
-      const response = await fetch(url, { 
-        signal: AbortSignal.timeout(10000),
-        headers: { 'User-Agent': 'Mozilla/5.0' }
-      });
-      
-      if (!response.ok) {
-        console.warn(`❌ Failed to fetch image: ${response.status}`);
-        return 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23f0f0f0%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-size=%2240%22 text-anchor=%22middle%22 dy=%22.3em%22%3E🏥%3C/text%3E%3C/svg%3E';
-      }
-
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      const contentType = response.headers.get('content-type') || 'image/png';
-      const base64 = buffer.toString('base64');
-      
-      console.log(`✅ Image converted: ${(buffer.length / 1024).toFixed(2)}KB`);
-      return `data:${contentType};base64,${base64}`;
-    } catch (error) {
-      console.error('❌ Error converting image:', error.message);
-      return 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23f0f0f0%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-size=%2240%22 text-anchor=%22middle%22 dy=%22.3em%22%3E🏥%3C/text%3E%3C/svg%3E';
-    }
-  }
-
-  /**
    * Generates a prescription PDF using Puppeteer
    */
   async generatePrescriptionPDF(prescriptionData, templateName = 'classic') {
     let browser;
     
     try {
-      // Convert S3 images to base64 in production
-      const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
-      
-      if (isProduction && prescriptionData.consultorio?.imageUrl) {
-        console.log('🔧 Production mode: Converting images to base64');
-        prescriptionData.consultorio.imageUrl = await this.imageToBase64(prescriptionData.consultorio.imageUrl);
-      }
-
       const template = this.getTemplate(templateName);
-      let html = this.populateTemplate(template, prescriptionData);
+      const html = this.populateTemplate(template, prescriptionData);
 
-      // In production, inject CSS to use system fonts
-      if (isProduction) {
-        const systemFontCSS = `
-          <style>
-            * {
-              font-family: Arial, Helvetica, sans-serif !important;
-              -webkit-font-smoothing: antialiased;
-              -moz-osx-font-smoothing: grayscale;
-            }
-          </style>
-        `;
-        html = html.replace('</head>', `${systemFontCSS}</head>`);
-      }
-      
-      if (isProduction) {
-        // Production: Use puppeteer-core with chromium - minimal args to match local behavior
-        browser = await puppeteerCore.launch({
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-gpu',
-          ],
-          defaultViewport: chromium.defaultViewport,
-          executablePath: await chromium.executablePath(),
-          headless: chromium.headless,
-        });
-      } else {
-        // Local development: Use regular puppeteer
-        browser = await puppeteer.launch({
-          headless: 'new',
-          args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        });
-      }
+      // Use same configuration for both local and production
+      browser = await puppeteer.launch({
+        headless: 'new',
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+        ],
+      });
 
       const page = await browser.newPage();
       await page.setContent(html, { waitUntil: 'networkidle0' });
