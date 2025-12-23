@@ -31,15 +31,25 @@ const clinicalHistorySchema = z.object({
   }).optional(),
 }).optional();
 
+const emergencyContactSchema = z.object({
+  name: z.string().optional(),
+  relationship: z.string().optional(),
+  phone: z.string().optional(),
+}).optional();
+
 export const createPacienteSchema = z.object({
   body: z.object({
     fullName: z.string().min(2, 'Full name must be at least 2 characters'),
     consultorioId: objectIdSchema,
+    birthDate: z.string().datetime().optional().or(z.string().optional()),
     age: z.number().int().positive().optional(),
     gender: z.enum(['masculino', 'femenino', 'otro']).optional(),
     phone: z.string().optional(),
     email: z.string().email('Invalid email format').optional(),
     address: z.string().optional(),
+    bloodType: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).optional(),
+    medicalInsurance: z.string().optional(),
+    emergencyContact: emergencyContactSchema,
     medicalHistory: z.string().optional(),
     allergies: z.string().optional(),
     notes: z.string().optional(),
@@ -50,11 +60,15 @@ export const createPacienteSchema = z.object({
 export const updatePacienteSchema = z.object({
   body: z.object({
     fullName: z.string().min(2, 'Full name must be at least 2 characters').optional(),
+    birthDate: z.string().datetime().optional().or(z.string().optional()),
     age: z.number().int().positive().optional(),
     gender: z.enum(['masculino', 'femenino', 'otro']).optional(),
     phone: z.string().optional(),
     email: z.string().email('Invalid email format').optional(),
     address: z.string().optional(),
+    bloodType: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).optional(),
+    medicalInsurance: z.string().optional(),
+    emergencyContact: emergencyContactSchema,
     medicalHistory: z.string().optional(),
     allergies: z.string().optional(),
     notes: z.string().optional(),

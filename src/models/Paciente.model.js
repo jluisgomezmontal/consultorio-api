@@ -8,6 +8,9 @@ const pacienteSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
+    birthDate: {
+      type: Date,
+    },
     age: {
       type: Number,
       min: 0,
@@ -31,6 +34,23 @@ const pacienteSchema = new mongoose.Schema(
     address: {
       type: String,
       trim: true,
+    },
+    bloodType: {
+      type: String,
+      enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
+      trim: true,
+    },
+    medicalInsurance: {
+      type: String,
+      trim: true,
+    },
+    emergencyContact: {
+      type: {
+        name: { type: String, trim: true },
+        relationship: { type: String, trim: true },
+        phone: { type: String, trim: true },
+      },
+      default: {},
     },
     medicalHistory: {
       type: String,
