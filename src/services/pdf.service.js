@@ -1,4 +1,6 @@
 import puppeteer from 'puppeteer';
+import puppeteerCore from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
@@ -17,10 +19,24 @@ class PDFService {
       const template = this.getTemplate(templateName);
       const html = this.populateTemplate(template, prescriptionData);
 
-      browser = await puppeteer.launch({
-        headless: 'new',
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      });
+      // Detect if we're in production (Render, AWS, etc.) or local development
+      const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
+      
+      if (isProduction) {
+        // Production: Use puppeteer-core with chromium
+        browser = await puppeteerCore.launch({
+          args: chromium.args,
+          defaultViewport: chromium.defaultViewport,
+          executablePath: await chromium.executablePath(),
+          headless: chromium.headless,
+        });
+      } else {
+        // Local development: Use regular puppeteer
+        browser = await puppeteer.launch({
+          headless: 'new',
+          args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        });
+      }
 
       const page = await browser.newPage();
       await page.setContent(html, { waitUntil: 'networkidle0' });
