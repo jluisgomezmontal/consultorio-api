@@ -17,10 +17,24 @@ class PDFService {
     
     try {
       const template = this.getTemplate(templateName);
-      const html = this.populateTemplate(template, prescriptionData);
+      let html = this.populateTemplate(template, prescriptionData);
 
       // Detect if we're in production (Render, AWS, etc.) or local development
       const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
+      
+      // In production, inject CSS to use system fonts only (no web fonts)
+      if (isProduction) {
+        const systemFontCSS = `
+          <style>
+            * {
+              font-family: Arial, Helvetica, sans-serif !important;
+              -webkit-font-smoothing: antialiased;
+              -moz-osx-font-smoothing: grayscale;
+            }
+          </style>
+        `;
+        html = html.replace('</head>', `${systemFontCSS}</head>`);
+      }
       
       if (isProduction) {
         // Production: Use puppeteer-core with chromium
@@ -31,6 +45,8 @@ class PDFService {
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
             '--disable-gpu',
+            '--font-render-hinting=none',
+            '--disable-font-subpixel-positioning',
           ],
           defaultViewport: chromium.defaultViewport,
           executablePath: await chromium.executablePath(),
@@ -65,6 +81,8 @@ class PDFService {
         tagged: false,
         // Use outline mode for fonts to reduce size
         outline: false,
+        // Scale down slightly to reduce file size
+        scale: 0.95,
       });
 
       await browser.close();
