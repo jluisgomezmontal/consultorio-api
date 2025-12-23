@@ -34,6 +34,30 @@ const citaSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    weight: {
+      type: Number,
+      min: 0,
+    },
+    bloodPressure: {
+      type: String,
+      trim: true,
+    },
+    measurements: {
+      type: {
+        height: { type: Number, min: 0 },
+        waist: { type: Number, min: 0 },
+        hip: { type: Number, min: 0 },
+      },
+      default: {},
+    },
+    currentCondition: {
+      type: String,
+      trim: true,
+    },
+    physicalExam: {
+      type: String,
+      trim: true,
+    },
     diagnostico: {
       type: String,
       trim: true,

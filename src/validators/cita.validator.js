@@ -14,6 +14,12 @@ const medicamentoSchema = z.object({
   indicaciones: z.string().optional(),
 });
 
+const measurementsSchema = z.object({
+  height: z.number().positive().optional(),
+  waist: z.number().positive().optional(),
+  hip: z.number().positive().optional(),
+}).optional();
+
 export const createCitaSchema = z.object({
   body: z.object({
     pacienteId: objectIdSchema,
@@ -24,6 +30,11 @@ export const createCitaSchema = z.object({
     }),
     time: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format (HH:MM)'),
     motivo: z.string().optional(),
+    weight: z.number().positive().optional(),
+    bloodPressure: z.string().optional(),
+    measurements: measurementsSchema,
+    currentCondition: z.string().optional(),
+    physicalExam: z.string().optional(),
     diagnostico: z.string().optional(),
     tratamiento: z.string().optional(),
     medicamentos: z.array(medicamentoSchema).optional(),
@@ -43,6 +54,11 @@ export const updateCitaSchema = z.object({
     }).optional(),
     time: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format (HH:MM)').optional(),
     motivo: z.string().optional(),
+    weight: z.number().positive().optional(),
+    bloodPressure: z.string().optional(),
+    measurements: measurementsSchema,
+    currentCondition: z.string().optional(),
+    physicalExam: z.string().optional(),
     diagnostico: z.string().optional(),
     tratamiento: z.string().optional(),
     medicamentos: z.array(medicamentoSchema).optional(),
