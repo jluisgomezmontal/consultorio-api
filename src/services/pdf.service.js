@@ -4,54 +4,11 @@ import chromium from '@sparticuz/chromium';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
-import https from 'https';
-import http from 'http';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 class PDFService {
-  /**
-   * Convert image URL to base64
-   */
-  async imageUrlToBase64(url) {
-    if (!url || url.startsWith('data:')) {
-      return url;
-    }
-
-    return new Promise((resolve, reject) => {
-      const protocol = url.startsWith('https') ? https : http;
-      
-      protocol.get(url, { timeout: 10000 }, (response) => {
-        if (response.statusCode !== 200) {
-          console.warn(`Failed to load image: ${url}, status: ${response.statusCode}`);
-          resolve('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-size=%2240%22 text-anchor=%22middle%22 dy=%22.3em%22%3E🏥%3C/text%3E%3C/svg%3E');
-          return;
-        }
-
-        const chunks = [];
-        response.on('data', (chunk) => chunks.push(chunk));
-        response.on('end', () => {
-          try {
-            const buffer = Buffer.concat(chunks);
-            const contentType = response.headers['content-type'] || 'image/png';
-            const base64 = buffer.toString('base64');
-            resolve(`data:${contentType};base64,${base64}`);
-          } catch (error) {
-            console.error('Error converting image to base64:', error);
-            resolve('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-size=%2240%22 text-anchor=%22middle%22 dy=%22.3em%22%3E🏥%3C/text%3E%3C/svg%3E');
-          }
-        });
-      }).on('error', (error) => {
-        console.error('Error fetching image:', error);
-        resolve('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-size=%2240%22 text-anchor=%22middle%22 dy=%22.3em%22%3E🏥%3C/text%3E%3C/svg%3E');
-      }).on('timeout', () => {
-        console.error('Image fetch timeout:', url);
-        resolve('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-size=%2240%22 text-anchor=%22middle%22 dy=%22.3em%22%3E🏥%3C/text%3E%3C/svg%3E');
-      });
-    });
-  }
-
   /**
    * Generates a prescription PDF using Puppeteer
    */
@@ -59,12 +16,6 @@ class PDFService {
     let browser;
     
     try {
-      // Convert external images to base64 before processing
-      if (prescriptionData.consultorio?.imageUrl && !prescriptionData.consultorio.imageUrl.startsWith('data:')) {
-        console.log('Converting consultorio image to base64:', prescriptionData.consultorio.imageUrl);
-        prescriptionData.consultorio.imageUrl = await this.imageUrlToBase64(prescriptionData.consultorio.imageUrl);
-      }
-
       const template = this.getTemplate(templateName);
       const html = this.populateTemplate(template, prescriptionData);
 
@@ -72,68 +23,48 @@ class PDFService {
       const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
       
       if (isProduction) {
-        // Production: Use puppeteer-core with chromium - optimized for PDF generation
-        const chromiumArgs = [
-          ...chromium.args,
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--single-process',
-          '--no-zygote',
-          '--disable-setuid-sandbox',
-          '--disable-web-security',
-          '--disable-features=IsolateOrigins,site-per-process',
-        ];
-
+        // Production: Use puppeteer-core with chromium
         browser = await puppeteerCore.launch({
-          args: chromiumArgs,
+          args: [
+            ...chromium.args,
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+          ],
           defaultViewport: chromium.defaultViewport,
           executablePath: await chromium.executablePath(),
           headless: chromium.headless,
-          ignoreHTTPSErrors: true,
         });
       } else {
         // Local development: Use regular puppeteer
         browser = await puppeteer.launch({
           headless: 'new',
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-          ],
+          args: ['--no-sandbox', '--disable-setuid-sandbox'],
         });
       }
 
       const page = await browser.newPage();
       
-      // Set viewport for consistent rendering
-      await page.setViewport({
-        width: 1200,
-        height: 800,
-        deviceScaleFactor: 1,
-      });
-
-      // Optimize page loading - wait for images to load properly
-      await page.setContent(html, { 
-        waitUntil: ['load', 'networkidle0'],
-        timeout: 30000,
-      });
-
-      // Wait a bit for images to fully render
-      await page.waitForTimeout(1000);
+      // Emulate screen media instead of print to avoid font embedding issues
+      await page.emulateMediaType('screen');
+      
+      await page.setContent(html, { waitUntil: 'networkidle0' });
 
       const pdfBuffer = await page.pdf({
         format: 'A4',
         landscape: true,
         printBackground: true,
-        preferCSSPageSize: false,
         margin: {
           top: '5mm',
           right: '5mm',
           bottom: '5mm',
           left: '5mm',
         },
-        displayHeaderFooter: false,
-        omitBackground: false,
+        // Disable tagged PDF to reduce file size and prevent corruption
+        tagged: false,
+        // Use outline mode for fonts to reduce size
+        outline: false,
       });
 
       await browser.close();
