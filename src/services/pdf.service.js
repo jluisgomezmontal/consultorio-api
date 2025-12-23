@@ -22,8 +22,15 @@ class PDFService {
       // Detect if we're in production (Render, AWS, etc.) or local development
       const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
       
-      // In production, inject CSS to use system fonts only (no web fonts)
+      // In production, remove external images and inject CSS to use system fonts
       if (isProduction) {
+        console.log('🔧 Production mode: Optimizing HTML for PDF generation');
+        
+        // Replace S3 images with placeholder to test if images are the issue
+        html = html.replace(/https:\/\/consultorio-documentos\.s3\.[^"']+/g, 
+          'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23f0f0f0%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-size=%2240%22 text-anchor=%22middle%22 dy=%22.3em%22%3E🏥%3C/text%3E%3C/svg%3E'
+        );
+        
         const systemFontCSS = `
           <style>
             * {
