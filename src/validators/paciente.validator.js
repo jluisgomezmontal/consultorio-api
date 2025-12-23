@@ -37,6 +37,13 @@ const emergencyContactSchema = z.object({
   phone: z.string().optional(),
 }).optional();
 
+const medicalInsuranceSchema = z.object({
+  insurer: z.string().optional(),
+  policyNumber: z.string().optional(),
+  holderName: z.string().optional(),
+  relationship: z.enum(['Titular', 'Esposo(a)', 'Hijo(a)', 'Otro']).optional(),
+}).optional();
+
 export const createPacienteSchema = z.object({
   body: z.object({
     fullName: z.string().min(2, 'Full name must be at least 2 characters'),
@@ -48,7 +55,7 @@ export const createPacienteSchema = z.object({
     email: z.string().email('Invalid email format').optional(),
     address: z.string().optional(),
     bloodType: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).optional(),
-    medicalInsurance: z.string().optional(),
+    medicalInsurance: medicalInsuranceSchema,
     emergencyContact: emergencyContactSchema,
     medicalHistory: z.string().optional(),
     allergies: z.string().optional(),
@@ -67,7 +74,7 @@ export const updatePacienteSchema = z.object({
     email: z.string().email('Invalid email format').optional(),
     address: z.string().optional(),
     bloodType: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).optional(),
-    medicalInsurance: z.string().optional(),
+    medicalInsurance: medicalInsuranceSchema,
     emergencyContact: emergencyContactSchema,
     medicalHistory: z.string().optional(),
     allergies: z.string().optional(),

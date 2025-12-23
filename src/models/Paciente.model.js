@@ -41,8 +41,13 @@ const pacienteSchema = new mongoose.Schema(
       trim: true,
     },
     medicalInsurance: {
-      type: String,
-      trim: true,
+      type: {
+        insurer: { type: String, trim: true },
+        policyNumber: { type: String, trim: true },
+        holderName: { type: String, trim: true },
+        relationship: { type: String, enum: ['Titular', 'Esposo(a)', 'Hijo(a)', 'Otro'], trim: true },
+      },
+      default: {},
     },
     emergencyContact: {
       type: {
