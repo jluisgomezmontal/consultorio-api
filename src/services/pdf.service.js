@@ -283,7 +283,7 @@ class PDFService {
     .medicamentos-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px 15px;
+      gap: 10px 5px;
     }
 
     .medicamento-item {
@@ -559,7 +559,7 @@ class PDFService {
     .medicamentos-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px 15px;
+      gap: 10px 5px;
     }
 
     .medicamento-item {
@@ -816,7 +816,7 @@ class PDFService {
     .medicamentos-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px 15px;
+      gap: 10px 5px;
     }
 
     .medicamento-item {
@@ -1073,7 +1073,7 @@ class PDFService {
     .medicamentos-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px 15px;
+      gap: 10px 5px;
     }
 
     .medicamento-item {
@@ -1336,7 +1336,7 @@ class PDFService {
     .medicamentos-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px 15px;
+      gap: 10px 5px;
     }
 
     .medicamento-item {
