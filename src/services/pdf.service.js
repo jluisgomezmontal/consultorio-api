@@ -119,7 +119,7 @@ class PDFService {
       .replace(/\{\{indicaciones\}\}/g, finalIndicaciones);
 
     const medicamentosHTML = medicamentos.map((med, index) => `
-      <div style="margin-bottom: 5px; padding: 10px; background: #f8f9fa; border-left: 3px solid #007bff;">
+      <div style="margin-bottom: 5px; padding: 5px; background: #f8f9fa; border-left: 3px solid #007bff;">
         <div style="font-weight: 600; color: #333; margin-bottom: 5px;">
           ${index + 1}. ${med.nombre || 'Medicamento'}
         </div>
