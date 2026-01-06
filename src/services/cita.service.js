@@ -266,7 +266,7 @@ class CitaService {
 
     if (conflictingCita) {
       throw new ConflictError(
-        `Doctor already has an appointment at ${data.time} on ${normalizedCreateDate.toLocaleDateString()}`
+        `El doctor ya tiene una cita a las ${data.time} el ${normalizedCreateDate.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}`
       );
     }
 
@@ -343,7 +343,7 @@ class CitaService {
 
       if (conflictingCita) {
         throw new ConflictError(
-          `Doctor already has an appointment at ${time} on ${date.toLocaleDateString()}`
+          `El doctor ya tiene una cita a las ${time} el ${date.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}`
         );
       }
     }
