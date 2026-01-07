@@ -112,6 +112,10 @@ const pacienteSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    photoS3Key: {
+      type: String,
+      trim: true,
+    },
     consultorioId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Consultorio',

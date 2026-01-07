@@ -56,6 +56,7 @@ export const createPacienteSchema = z.object({
     address: z.string().optional(),
     bloodType: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).optional(),
     photoUrl: z.string().url('Invalid URL format').optional().or(z.literal('')),
+    photoS3Key: z.string().optional().or(z.literal('')),
     medicalInsurance: medicalInsuranceSchema,
     emergencyContact: emergencyContactSchema,
     medicalHistory: z.string().optional(),
@@ -76,6 +77,7 @@ export const updatePacienteSchema = z.object({
     address: z.string().optional(),
     bloodType: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).optional(),
     photoUrl: z.string().url('Invalid URL format').optional().or(z.literal('')),
+    photoS3Key: z.string().optional().or(z.literal('')),
     medicalInsurance: medicalInsuranceSchema,
     emergencyContact: emergencyContactSchema,
     medicalHistory: z.string().optional(),
@@ -101,3 +103,4 @@ export const searchPacientesSchema = z.object({
     limit: z.string().regex(/^\d+$/).optional(),
   }),
 });
+
