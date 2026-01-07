@@ -108,6 +108,10 @@ const pacienteSchema = new mongoose.Schema(
       },
       default: {},
     },
+    photoUrl: {
+      type: String,
+      trim: true,
+    },
     consultorioId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Consultorio',
