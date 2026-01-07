@@ -19,10 +19,27 @@ await connectDB();
 // Security middleware
 app.use(helmet());
 
-// CORS configuration
+// CORS configuration - permite múltiples origins
+const allowedOrigins = process.env.CORS_ORIGIN 
+  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+  : ['*'];
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: (origin, callback) => {
+      // Permitir requests sin origin (ej: mobile apps, Postman)
+      if (!origin) return callback(null, true);
+      
+      // Si allowedOrigins incluye '*', permitir cualquier origin
+      if (allowedOrigins.includes('*')) return callback(null, true);
+      
+      // Verificar si el origin está en la lista permitida
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   })
 );
