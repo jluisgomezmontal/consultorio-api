@@ -1,14 +1,17 @@
 import { Router } from 'express';
+import express from 'express';
 import authRoutes from './auth.routes.js';
-import userRoutes from './user.routes.js';
 import consultorioRoutes from './consultorio.routes.js';
-import pacienteRoutes from './paciente.routes.js';
-import pacientePhotoRoutes from './paciente-photo.routes.js';
 import citaRoutes from './cita.routes.js';
-import documentoRoutes from './documento.routes.js';
-import recetaRoutes from './receta.routes.js';
-import reporteRoutes from './reporte.routes.js';
+import pacienteRoutes from './paciente.routes.js';
 import pagoRoutes from './pago.routes.js';
+import reporteRoutes from './reporte.routes.js';
+import userRoutes from './user.routes.js';
+import documentoRoutes from './documento.routes.js';
+import pacientePhotoRoutes from './paciente-photo.routes.js';
+import paqueteRoutes from './paquete.routes.js';
+import recetaRoutes from './receta.routes.js';
+import stripeRoutes from './stripe.routes.js';
 
 const router = Router();
 
@@ -26,9 +29,11 @@ router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/consultorios', consultorioRoutes);
 router.use('/pacientes', pacienteRoutes);
-router.use('/pacientes-photo', pacientePhotoRoutes);
+router.use('/paciente-photos', pacientePhotoRoutes);
 router.use('/citas', citaRoutes);
 router.use('/documentos', documentoRoutes);
+router.use('/paquetes', paqueteRoutes);
+router.use('/stripe', stripeRoutes);
 router.use('/recetas', recetaRoutes);
 router.use('/reportes', reporteRoutes);
 router.use('/pagos', pagoRoutes);

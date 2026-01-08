@@ -1,0 +1,10 @@
+# Agregar esta dependencia a package.json:
+
+{
+  "dependencies": {
+    "stripe": "^14.0.0"
+  }
+}
+
+# Ejecutar:
+npm install stripe

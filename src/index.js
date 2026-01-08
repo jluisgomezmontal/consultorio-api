@@ -9,6 +9,7 @@ import { generalLimiter } from './middlewares/rateLimiter.js';
 import { sanitizeInput } from './middlewares/validation.js';
 import logger from './utils/logger.js';
 import connectDB from './config/database.js';
+import stripeController from './controllers/stripe.controller.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,6 +30,9 @@ app.use(
 
 // Rate limiting
 app.use(generalLimiter);
+
+// Stripe webhook needs raw body - MUST be before express.json()
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), stripeController.handleWebhook);
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));

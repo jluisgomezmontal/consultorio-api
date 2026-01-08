@@ -2,6 +2,7 @@ import { Router } from 'express';
 import userController from '../controllers/user.controller.js';
 import { authenticate, authorize } from '../middlewares/auth.js';
 import { validate } from '../middlewares/validation.js';
+import { checkLimiteUsuarios } from '../middlewares/checkPaquete.js';
 import { 
   createUserSchema, 
   updateUserSchema, 
@@ -39,8 +40,8 @@ router.put('/receptionists/:id', authorize('doctor'), validate(updateReceptionis
 // Get user by ID
 router.get('/:id', validate(getUserSchema), userController.getUserById);
 
-// Create user (admin only)
-router.post('/', authorize('admin'), validate(createUserSchema), userController.createUser);
+// Create user (admin only) - with package limit validation
+router.post('/', authorize('admin'), validate(createUserSchema), checkLimiteUsuarios('doctor'), checkLimiteUsuarios('recepcionista'), userController.createUser);
 
 // Update user (admin only)
 router.put('/:id', authorize('admin'), validate(updateUserSchema), userController.updateUser);

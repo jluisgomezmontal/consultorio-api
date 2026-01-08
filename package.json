@@ -7,6 +7,9 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
+    "init:paquetes": "node scripts/init-paquetes.js",
+    "migrate:consultorios": "node scripts/migrate-consultorios.js",
+    "setup:paquetes": "npm run init:paquetes && npm run migrate:consultorios",
     "seed": "node seed.js",
     "setup": "npm install",
     "migrate:clinical-history": "node src/scripts/migrate-clinical-history.js"
@@ -38,6 +41,7 @@
     "morgan": "^1.10.0",
     "multer": "^2.0.2",
     "puppeteer": "^22.0.0",
+    "stripe": "^20.1.2",
     "zod": "^3.22.4"
   },
   "devDependencies": {

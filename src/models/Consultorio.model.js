@@ -68,6 +68,43 @@ const consultorioSchema = new mongoose.Schema(
         ginecoObstetricos: true,
       },
     },
+    paquete: {
+      type: String,
+      enum: ['basico', 'profesional', 'clinica', 'licencia'],
+      required: true,
+      default: 'basico',
+      index: true,
+    },
+    suscripcion: {
+      estado: {
+        type: String,
+        enum: ['trial', 'activa', 'vencida', 'cancelada'],
+        default: 'trial',
+      },
+      fechaInicio: {
+        type: Date,
+        default: Date.now,
+      },
+      fechaVencimiento: {
+        type: Date,
+      },
+      tipoPago: {
+        type: String,
+        enum: ['mensual', 'anual'],
+        default: 'mensual',
+      },
+    },
+    // Stripe integration
+    stripeCustomerId: {
+      type: String,
+      trim: true,
+      index: true,
+    },
+    stripeSubscriptionId: {
+      type: String,
+      trim: true,
+      index: true,
+    },
   },
   {
     timestamps: true,
