@@ -37,6 +37,11 @@ router.put('/me/password', validate(updateOwnPasswordSchema), userController.upd
 // Update receptionist (doctors only)
 router.put('/receptionists/:id', authorize('doctor'), validate(updateReceptionistSchema), userController.updateReceptionist);
 
+// Doctor routes - manage users in their consultorios
+router.post('/consultorio/users', authorize('doctor'), validate(createUserSchema), checkLimiteUsuarios('doctor'), checkLimiteUsuarios('recepcionista'), userController.createUserByDoctor);
+router.put('/consultorio/users/:id', authorize('doctor'), validate(updateUserSchema), userController.updateUserByDoctor);
+router.delete('/consultorio/users/:id', authorize('doctor'), validate(getUserSchema), userController.deleteUserByDoctor);
+
 // Get user by ID
 router.get('/:id', validate(getUserSchema), userController.getUserById);
 

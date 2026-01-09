@@ -394,6 +394,108 @@ class UserService {
       consultorios: consultoriosArray,
     };
   }
+
+  /**
+   * Create user by doctor (only for their consultorios)
+   */
+  async createUserByDoctor(data, password, doctorId) {
+    // Get doctor's consultorios
+    const doctor = await User.findById(doctorId).lean();
+    if (!doctor) {
+      throw new NotFoundError('Doctor not found');
+    }
+
+    const doctorConsultoriosIds = doctor.consultoriosIds.map(id => id.toString());
+    const requestedConsultoriosIds = Array.isArray(data.consultoriosIds) ? data.consultoriosIds : [];
+
+    // Verify that all requested consultorios belong to the doctor
+    const invalidConsultorios = requestedConsultoriosIds.filter(
+      id => !doctorConsultoriosIds.includes(id.toString())
+    );
+
+    if (invalidConsultorios.length > 0) {
+      throw new BadRequestError('You can only create users for your own consultorios');
+    }
+
+    // Use the existing createUser method
+    return this.createUser(data, password);
+  }
+
+  /**
+   * Update user by doctor (only for their consultorios)
+   */
+  async updateUserByDoctor(userId, data, doctorId) {
+    // Get doctor's consultorios
+    const doctor = await User.findById(doctorId).lean();
+    if (!doctor) {
+      throw new NotFoundError('Doctor not found');
+    }
+
+    // Get the user to update
+    const userToUpdate = await User.findById(userId).lean();
+    if (!userToUpdate) {
+      throw new NotFoundError('User not found');
+    }
+
+    const doctorConsultoriosIds = doctor.consultoriosIds.map(id => id.toString());
+    const userConsultoriosIds = userToUpdate.consultoriosIds.map(id => id.toString());
+
+    // Verify that the user belongs to at least one of the doctor's consultorios
+    const hasCommonConsultorio = userConsultoriosIds.some(
+      id => doctorConsultoriosIds.includes(id)
+    );
+
+    if (!hasCommonConsultorio) {
+      throw new BadRequestError('You can only update users from your own consultorios');
+    }
+
+    // If updating consultoriosIds, verify they all belong to the doctor
+    if (data.consultoriosIds) {
+      const requestedConsultoriosIds = Array.isArray(data.consultoriosIds) ? data.consultoriosIds : [];
+      const invalidConsultorios = requestedConsultoriosIds.filter(
+        id => !doctorConsultoriosIds.includes(id.toString())
+      );
+
+      if (invalidConsultorios.length > 0) {
+        throw new BadRequestError('You can only assign users to your own consultorios');
+      }
+    }
+
+    // Use the existing updateUser method
+    return this.updateUser(userId, data);
+  }
+
+  /**
+   * Delete user by doctor (only for their consultorios)
+   */
+  async deleteUserByDoctor(userId, doctorId) {
+    // Get doctor's consultorios
+    const doctor = await User.findById(doctorId).lean();
+    if (!doctor) {
+      throw new NotFoundError('Doctor not found');
+    }
+
+    // Get the user to delete
+    const userToDelete = await User.findById(userId).lean();
+    if (!userToDelete) {
+      throw new NotFoundError('User not found');
+    }
+
+    const doctorConsultoriosIds = doctor.consultoriosIds.map(id => id.toString());
+    const userConsultoriosIds = userToDelete.consultoriosIds.map(id => id.toString());
+
+    // Verify that the user belongs to at least one of the doctor's consultorios
+    const hasCommonConsultorio = userConsultoriosIds.some(
+      id => doctorConsultoriosIds.includes(id)
+    );
+
+    if (!hasCommonConsultorio) {
+      throw new BadRequestError('You can only delete users from your own consultorios');
+    }
+
+    // Use the existing deleteUser method
+    return this.deleteUser(userId);
+  }
 }
 
 export default new UserService();

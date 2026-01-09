@@ -172,6 +172,51 @@ class UserController {
       next(error);
     }
   }
+
+  /**
+   * Create user by doctor (only for their consultorios)
+   */
+  async createUserByDoctor(req, res, next) {
+    try {
+      const { password = 'changeme123', ...userData } = req.body;
+      const doctorId = req.user.id;
+      
+      const user = await userService.createUserByDoctor(userData, password, doctorId);
+      return createdResponse(res, user, 'User created successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update user by doctor (only for their consultorios)
+   */
+  async updateUserByDoctor(req, res, next) {
+    try {
+      const { id } = req.params;
+      const doctorId = req.user.id;
+      
+      const user = await userService.updateUserByDoctor(id, req.body, doctorId);
+      return successResponse(res, user, 'User updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Delete user by doctor (only for their consultorios)
+   */
+  async deleteUserByDoctor(req, res, next) {
+    try {
+      const { id } = req.params;
+      const doctorId = req.user.id;
+      
+      const result = await userService.deleteUserByDoctor(id, doctorId);
+      return successResponse(res, result, result.message);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new UserController();
