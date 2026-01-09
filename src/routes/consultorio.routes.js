@@ -38,6 +38,9 @@ router.put('/:id/basic-info', authorize('doctor'), upload.single('image'), handl
 // Update receta template (doctor only)
 router.put('/:id/receta-template', authorize('doctor'), validate(updateRecetaTemplateSchema), consultorioController.updateRecetaTemplate);
 
+// Update permissions (doctor only)
+router.put('/:id/permissions', authorize('doctor'), consultorioController.updatePermissions);
+
 // Create consultorio (admin only)
 router.post('/', authorize('admin'), validate(createConsultorioSchema), consultorioController.createConsultorio);
 

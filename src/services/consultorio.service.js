@@ -341,6 +341,36 @@ class ConsultorioService {
     const { _id, ...rest } = updatedConsultorio;
     return { ...rest, id: _id.toString() };
   }
+
+  /**
+   * Update consultorio permissions (doctor only)
+   */
+  async updatePermissions(id, userId, permissions) {
+    const consultorio = await Consultorio.findById(id);
+
+    if (!consultorio) {
+      throw new NotFoundError('Consultorio not found');
+    }
+
+    const user = await User.findById(userId);
+    if (!user || user.role !== 'doctor') {
+      throw new BadRequestError('Only doctors can update permissions');
+    }
+
+    const hasAccess = user.consultoriosIds.some(cId => cId.toString() === id);
+    if (!hasAccess) {
+      throw new BadRequestError('You do not have access to this consultorio');
+    }
+
+    const updatedConsultorio = await Consultorio.findByIdAndUpdate(
+      id,
+      { permissions },
+      { new: true, runValidators: true }
+    ).lean();
+
+    const { _id, ...rest } = updatedConsultorio;
+    return { ...rest, id: _id.toString() };
+  }
 }
 
 export default new ConsultorioService();

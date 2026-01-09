@@ -68,6 +68,17 @@ const consultorioSchema = new mongoose.Schema(
         ginecoObstetricos: true,
       },
     },
+    permissions: {
+      type: {
+        allowReceptionistViewClinicalSummary: {
+          type: Boolean,
+          default: false,
+        },
+      },
+      default: {
+        allowReceptionistViewClinicalSummary: false,
+      },
+    },
     paquete: {
       type: String,
       enum: ['basico', 'profesional', 'clinica', 'licencia'],

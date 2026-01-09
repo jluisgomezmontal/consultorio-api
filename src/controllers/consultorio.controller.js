@@ -149,6 +149,23 @@ class ConsultorioController {
       next(error);
     }
   }
+
+  /**
+   * Update consultorio permissions (doctor only)
+   */
+  async updatePermissions(req, res, next) {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+      const { permissions } = req.body;
+      
+      const consultorio = await consultorioService.updatePermissions(id, userId, permissions);
+      
+      return successResponse(res, consultorio, 'Permissions updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new ConsultorioController();
