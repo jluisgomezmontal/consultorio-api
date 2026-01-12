@@ -12,6 +12,7 @@ import pacientePhotoRoutes from './paciente-photo.routes.js';
 import paqueteRoutes from './paquete.routes.js';
 import recetaRoutes from './receta.routes.js';
 import stripeRoutes from './stripe.routes.js';
+import medicationAllergyRoutes from './medicationAllergy.routes.js';
 
 const router = Router();
 
@@ -37,5 +38,6 @@ router.use('/stripe', stripeRoutes);
 router.use('/recetas', recetaRoutes);
 router.use('/reportes', reporteRoutes);
 router.use('/pagos', pagoRoutes);
+router.use('/medication-allergies', medicationAllergyRoutes);
 
 export default router;

@@ -106,7 +106,7 @@ class PacienteService {
       Object.assign(filter, consultorioFilter);
     }
 
-    const pacienteDoc = await Paciente.findOne(filter).lean();
+    const pacienteDoc = await Paciente.findOne(filter).populate('medicationAllergies').lean();
 
     if (!pacienteDoc) {
       throw new NotFoundError('Paciente not found or access denied');
@@ -131,7 +131,12 @@ class PacienteService {
    */
   async createPaciente(data) {
     const paciente = await Paciente.create(data);
-    return paciente.toObject();
+    const populated = await Paciente.findById(paciente._id).populate('medicationAllergies').lean();
+    const { _id, __v, ...rest } = populated;
+    return {
+      ...rest,
+      id: _id.toString(),
+    };
   }
 
   /**
@@ -151,7 +156,7 @@ class PacienteService {
     const paciente = await Paciente.findOneAndUpdate(filter, data, {
       new: true,
       runValidators: true,
-    }).lean();
+    }).populate('medicationAllergies').lean();
 
     if (!paciente) {
       throw new NotFoundError('Paciente not found or access denied');
@@ -199,7 +204,7 @@ class PacienteService {
    * @param {Object} consultorioFilter - MongoDB filter for consultorio restriction (from middleware)
    */
   async getPacienteHistory(id, consultorioFilter = null) {
-    const pacienteDoc = await Paciente.findById(id).lean();
+    const pacienteDoc = await Paciente.findById(id).populate('medicationAllergies').lean();
 
     if (!pacienteDoc) {
       throw new NotFoundError('Paciente not found');

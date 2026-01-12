@@ -65,6 +65,12 @@ const pacienteSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    medicationAllergies: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'MedicationAllergy',
+      },
+    ],
     notes: {
       type: String,
       trim: true,
