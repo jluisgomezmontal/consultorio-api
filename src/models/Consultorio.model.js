@@ -79,6 +79,37 @@ const consultorioSchema = new mongoose.Schema(
         allowReceptionistViewClinicalSummary: false,
       },
     },
+    appointmentSectionsConfig: {
+      type: {
+        signosVitales: {
+          type: Boolean,
+          default: true,
+        },
+        evaluacionMedica: {
+          type: Boolean,
+          default: true,
+        },
+        diagnosticoTratamiento: {
+          type: Boolean,
+          default: true,
+        },
+        medicamentos: {
+          type: Boolean,
+          default: true,
+        },
+        notasAdicionales: {
+          type: Boolean,
+          default: true,
+        },
+      },
+      default: {
+        signosVitales: true,
+        evaluacionMedica: true,
+        diagnosticoTratamiento: true,
+        medicamentos: true,
+        notasAdicionales: true,
+      },
+    },
     paquete: {
       type: String,
       enum: ['basico', 'profesional', 'clinica', 'licencia'],

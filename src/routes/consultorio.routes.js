@@ -41,6 +41,12 @@ router.put('/:id/receta-template', authorize('doctor'), validate(updateRecetaTem
 // Update permissions (doctor only)
 router.put('/:id/permissions', authorize('doctor'), consultorioController.updatePermissions);
 
+// Get appointment sections configuration
+router.get('/:id/appointment-sections-config', validate(getConsultorioSchema), consultorioController.getAppointmentSectionsConfig);
+
+// Update appointment sections configuration (doctor only)
+router.put('/:id/appointment-sections-config', authorize('doctor'), consultorioController.updateAppointmentSectionsConfig);
+
 // Create consultorio (admin only)
 router.post('/', authorize('admin'), validate(createConsultorioSchema), consultorioController.createConsultorio);
 

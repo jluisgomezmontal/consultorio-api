@@ -166,6 +166,36 @@ class ConsultorioController {
       next(error);
     }
   }
+
+  /**
+   * Get appointment sections configuration
+   */
+  async getAppointmentSectionsConfig(req, res, next) {
+    try {
+      const { id } = req.params;
+      const config = await consultorioService.getAppointmentSectionsConfig(id);
+      return successResponse(res, config);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update appointment sections configuration (doctor only)
+   */
+  async updateAppointmentSectionsConfig(req, res, next) {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+      const config = req.body;
+      
+      const consultorio = await consultorioService.updateAppointmentSectionsConfig(id, userId, config);
+      
+      return successResponse(res, consultorio, 'Appointment sections configuration updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new ConsultorioController();

@@ -42,6 +42,23 @@ const citaSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    heartRate: {
+      type: Number,
+      min: 0,
+    },
+    temperature: {
+      type: Number,
+      min: 0,
+    },
+    oxygenSaturation: {
+      type: Number,
+      min: 0,
+      max: 100,
+    },
+    bmi: {
+      type: Number,
+      min: 0,
+    },
     measurements: {
       type: {
         height: { type: Number, min: 0 },

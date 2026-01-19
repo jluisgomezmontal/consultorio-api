@@ -1,5 +1,5 @@
 import { Consultorio, User, Cita, Pago } from '../models/index.js';
-import { NotFoundError } from '../utils/errors.js';
+import { NotFoundError, BadRequestError } from '../utils/errors.js';
 
 class ConsultorioService {
   /**
@@ -365,6 +365,57 @@ class ConsultorioService {
     const updatedConsultorio = await Consultorio.findByIdAndUpdate(
       id,
       { permissions },
+      { new: true, runValidators: true }
+    ).lean();
+
+    const { _id, ...rest } = updatedConsultorio;
+    return { ...rest, id: _id.toString() };
+  }
+
+  /**
+   * Get appointment sections configuration for a consultorio
+   */
+  async getAppointmentSectionsConfig(id) {
+    const consultorio = await Consultorio.findById(id).select('appointmentSectionsConfig').lean();
+
+    if (!consultorio) {
+      throw new NotFoundError('Consultorio not found');
+    }
+
+    const defaultConfig = {
+      signosVitales: true,
+      evaluacionMedica: true,
+      diagnosticoTratamiento: true,
+      medicamentos: true,
+      notasAdicionales: true,
+    };
+
+    return consultorio.appointmentSectionsConfig || defaultConfig;
+  }
+
+  /**
+   * Update appointment sections configuration (doctor only)
+   */
+  async updateAppointmentSectionsConfig(id, userId, config) {
+    const consultorio = await Consultorio.findById(id);
+
+    if (!consultorio) {
+      throw new NotFoundError('Consultorio not found');
+    }
+
+    const user = await User.findById(userId);
+    if (!user || user.role !== 'doctor') {
+      throw new BadRequestError('Only doctors can update appointment sections configuration');
+    }
+
+    const hasAccess = user.consultoriosIds.some(cId => cId.toString() === id);
+    if (!hasAccess) {
+      throw new BadRequestError('You do not have access to this consultorio');
+    }
+
+    const updatedConsultorio = await Consultorio.findByIdAndUpdate(
+      id,
+      { appointmentSectionsConfig: config },
       { new: true, runValidators: true }
     ).lean();
 
