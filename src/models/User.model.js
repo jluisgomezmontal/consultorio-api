@@ -45,6 +45,14 @@ const userSchema = new mongoose.Schema(
       default: [],
       trim: true,
     },
+    photoUrl: {
+      type: String,
+      trim: true,
+    },
+    photoS3Key: {
+      type: String,
+      trim: true,
+    },
   },
   {
     timestamps: true,
