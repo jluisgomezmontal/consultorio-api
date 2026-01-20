@@ -58,11 +58,15 @@ export const errorHandler = (err, req, res, next) => {
   }
 
   // Log error
+  console.error('❌ Error completo:', err);
+  console.error('Stack trace:', err.stack);
+  
   logger.error(message, {
     statusCode,
     stack: err.stack,
     url: req.url,
     method: req.method,
+    errorDetails: err.message,
   });
 
   // Send error response

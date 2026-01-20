@@ -7,6 +7,32 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 class PDFService {
+  constructor() {
+    this.watermarkSVGs = this.loadWatermarkSVGs();
+  }
+
+  loadWatermarkSVGs() {
+    const assetsPath = path.join(__dirname, '../assets');
+    
+    try {
+      const svg1 = readFileSync(path.join(assetsPath, '29800.svg'), 'utf-8');
+      const svg2 = readFileSync(path.join(assetsPath, '1301891.svg'), 'utf-8');
+      const svg3 = readFileSync(path.join(assetsPath, '1639328.svg'), 'utf-8');
+      
+      return {
+        svg1: `data:image/svg+xml;base64,${Buffer.from(svg1).toString('base64')}`,
+        svg2: `data:image/svg+xml;base64,${Buffer.from(svg2).toString('base64')}`,
+        svg3: `data:image/svg+xml;base64,${Buffer.from(svg3).toString('base64')}`
+      };
+    } catch (error) {
+      console.error('Error loading watermark SVGs:', error);
+      return {
+        svg1: '',
+        svg2: '',
+        svg3: ''
+      };
+    }
+  }
   /**
    * Generates a prescription PDF using Puppeteer
    */
@@ -14,9 +40,14 @@ class PDFService {
     let browser;
     
     try {
+      console.log('📄 Iniciando generación de PDF...');
+      console.log('Template:', templateName);
+      
       const template = this.getTemplate(templateName);
       const html = this.populateTemplate(template, prescriptionData);
 
+      console.log('🚀 Lanzando Puppeteer...');
+      
       // Use same configuration for both local and production
       browser = await puppeteer.launch({
         headless: 'new',
@@ -25,12 +56,21 @@ class PDFService {
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--disable-gpu',
+          '--disable-software-rasterizer',
+          '--disable-extensions',
         ],
+        timeout: 60000,
       });
 
+      console.log('✅ Puppeteer lanzado correctamente');
+      
       const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'networkidle0' });
-
+      console.log('📝 Configurando contenido HTML...');
+      
+      await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
+      
+      console.log('🖨️ Generando PDF...');
+      
       const pdfBuffer = await page.pdf({
         format: 'A4',
         landscape: true,
@@ -43,12 +83,21 @@ class PDFService {
         },
       });
 
+      console.log('✅ PDF generado exitosamente');
+      
       await browser.close();
       
       return pdfBuffer;
     } catch (error) {
+      console.error('❌ Error en generatePrescriptionPDF:', error.message);
+      console.error('Stack:', error.stack);
+      
       if (browser) {
-        await browser.close();
+        try {
+          await browser.close();
+        } catch (closeError) {
+          console.error('Error cerrando browser:', closeError);
+        }
       }
       throw error;
     }
@@ -141,6 +190,7 @@ class PDFService {
    * Template 1 - Green Professional (Verde profesional)
    */
   getTemplate1() {
+    const watermarkSrc = this.watermarkSVGs.svg1;
     return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -155,107 +205,100 @@ class PDFService {
     }
 
     body {
-      font-family: Arial, sans-serif;
-      color: #333;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: #3a3f4d;
       background: #fff;
+      letter-spacing: -0.01em;
     }
 
     .page {
       width: 287mm;
       height: auto;
       max-height: 200mm;
-      padding: 5mm;
+      padding: 8mm;
       margin: 0 auto;
       position: relative;
+      border-left: 4px solid #3eb8c4;
     }
 
     /* ================= HEADER ================= */
 
     .header {
-      border: 3px solid #2d7a3e;
-      border-radius: 8px;
-      margin-bottom: 5px;
-      display: flex;
-      min-height: 90px;
-    }
-
-    /* LOGO 25% */
-    .header-logo {
-      width: 25%;
+      margin-bottom: 8mm;
       display: flex;
       align-items: center;
-      justify-content: center;
-      padding: 10px;
+      gap: 20px;
+      padding-bottom: 6mm;
+      border-bottom: 1px solid #e5e6e8;
+    }
+
+    .header-logo {
+      width: 80px;
+      height: 80px;
+      flex-shrink: 0;
     }
 
     .header-logo img {
-      max-width: 100%;
-      max-height: 100%;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
     }
 
-    /* DATOS 75% */
     .header-info {
-      width: 75%;
-      padding: 10px 15px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
+      flex: 1;
     }
 
     .consultorio-name {
-      padding-left: 30px;
-      text-align: left;
-      font-size: 20px;
-      font-weight: bold;
-      color: #2d7a3e;
-      text-transform: uppercase;
-      line-height: 1.2;
+      font-size: 18px;
+      font-weight: 600;
+      color: #3a3f4d;
       margin-bottom: 4px;
+      letter-spacing: -0.02em;
     }
 
     .doctor-name {
-      padding-left: 30px;
-      text-align: left;
-      font-size: 18px;
-      font-style: italic;
-      color: #1e5a8e;
-      margin-bottom: 4px;
+      font-size: 15px;
+      font-weight: 500;
+      color: #3eb8c4;
+      margin-bottom: 6px;
     }
 
     .consultorio-description {
-      padding-left: 30px;
-      text-align: left;
       font-size: 11px;
-      color: #666;
-      margin-bottom: 3px;
+      color: #6b7280;
+      margin-bottom: 2px;
+      line-height: 1.4;
     }
 
     .specialty {
-      padding-left: 30px;
-      text-align: left;
-      font-size: 12px;
-      color: #666;
+      font-size: 10px;
+      color: #9ca3af;
     }
 
     /* ================= PACIENTE ================= */
 
     .patient-section {
-      padding: 5px 0;
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 3px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 8mm;
+      padding: 4mm;
+      background: #f9fafb;
+      border-radius: 6px;
     }
 
     .field {
-      font-size: 13px;
-      color: #1e5a8e;
+      font-size: 11px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
     }
 
     .field-value {
-      border-bottom: 1px solid #000;
-      display: inline-block;
-      min-width: 200px;
+      font-size: 13px;
+      color: #3a3f4d;
+      font-weight: 500;
     }
 
     /* ================= CONTENIDO ================= */
@@ -265,17 +308,36 @@ class PDFService {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      opacity: 0.05;
-      font-size: 120px;
+      opacity: 0.04;
+      width: 350px;
+      height: 350px;
       pointer-events: none;
     }
 
+    .watermark img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
     .content-area {
-      min-height: 40mm;
-      border: 2px solid #2d7a3e;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 10px;
+      margin-bottom: 6mm;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #3a3f4d;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .section-content {
+      font-size: 12px;
+      color: #4b5563;
+      line-height: 1.6;
+      margin-bottom: 5mm;
     }
 
     /* ================= MEDICAMENTOS ================= */
@@ -283,43 +345,51 @@ class PDFService {
     .medicamentos-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px 5px;
+      gap: 8px;
     }
 
     .medicamento-item {
-      font-size: 13px;
-      background: #f5f5f5;
-      padding: 8px;
-      border-radius: 5px;
-      line-height: 1.4;
+      font-size: 12px;
+      padding: 8px 12px;
+      border-left: 3px solid #3eb8c4;
+      background: #f9fafb;
+      line-height: 1.5;
       break-inside: avoid;
     }
 
     .medicamento-item strong {
-      color: #1e5a8e;
+      color: #3a3f4d;
+      font-weight: 600;
     }
 
     /* ================= FIRMA ================= */
 
     .signature {
-      margin-top: 8px;
+      margin-top: 8mm;
       text-align: right;
     }
 
     .signature-line {
-      border-top: 2px solid #000;
-      width: 250px;
+      border-top: 1px solid #d1d5db;
+      width: 200px;
       margin-left: auto;
-      margin-bottom: 5px;
+      margin-bottom: 6px;
+    }
+
+    .signature-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: #3a3f4d;
     }
 
     /* ================= FOOTER ================= */
 
     .footer {
-      border-top: 2px solid #2d7a3e;
-      padding-top: 10px;
-      font-size: 11px;
-      color: #666;
+      margin-top: 6mm;
+      padding-top: 4mm;
+      border-top: 1px solid #e5e6e8;
+      font-size: 10px;
+      color: #9ca3af;
       text-align: center;
       display: flex;
       justify-content: center;
@@ -356,51 +426,46 @@ class PDFService {
     <!-- PACIENTE -->
     <div class="patient-section">
       <div>
-        <span class="field">Paciente: </span>
-        <span class="field-value">{{paciente.fullName}}</span>
+        <div class="field">Paciente</div>
+        <div class="field-value">{{paciente.fullName}}</div>
       </div>
       <div>
-        <span class="field">Fecha: </span>
-        <span class="field-value">{{fecha}}</span>
+        <div class="field">Edad / Sexo</div>
+        <div class="field-value">{{paciente.age}} años / {{paciente.gender}}</div>
+      </div>
+      <div>
+        <div class="field">Fecha</div>
+        <div class="field-value">{{fecha}}</div>
       </div>
     </div>
 
-    <div style="display:flex; justify-content:flex-end; margin-bottom:10px; font-size:12px; color:#666;">
-      <div style="margin-right:20px;">Edad: {{paciente.age}}</div>
-      <div>Sexo: {{paciente.gender}}</div>
+    <div class="watermark">
+      <img src="${watermarkSrc}" alt="Medical Symbol" />
     </div>
-
-    <div class="watermark">℞</div>
 
     <!-- CONTENIDO -->
     <div class="content-area">
 
-      <div style="margin-bottom:5px;">
-        <div style="font-weight:bold; color:#2d7a3e; margin-bottom:3px;">Motivo de Consulta:</div>
-        <div style="padding:8px; background:#f5f5f5; border-radius:5px; font-size:13px;">
-          {{motivo}}
-        </div>
+      <div>
+        <div class="section-title">Motivo de Consulta</div>
+        <div class="section-content">{{motivo}}</div>
       </div>
 
-      <div style="margin-bottom:5px;">
-        <div style="font-weight:bold; color:#2d7a3e; margin-bottom:3px;">Diagnóstico:</div>
-        <div style="padding:8px; background:#f5f5f5; border-radius:5px; font-size:13px;">
-          {{diagnostico}}
-        </div>
+      <div>
+        <div class="section-title">Diagnóstico</div>
+        <div class="section-content">{{diagnostico}}</div>
       </div>
 
-      <div style="margin-bottom:5px;">
-        <div style="font-weight:bold; color:#2d7a3e; margin-bottom:3px;">Prescripción:</div>
+      <div>
+        <div class="section-title">Prescripción</div>
         <div class="medicamentos-grid">
           {{medicamentos}}
         </div>
       </div>
 
-      <div>
-        <div style="font-weight:bold; color:#2d7a3e; margin-bottom:3px;">Indicaciones y Tratamiento:</div>
-        <div style="padding:10px; background:#f5f5f5; border-radius:5px; font-size:13px;">
-          {{indicaciones}}
-        </div>
+      <div style="margin-top:5mm;">
+        <div class="section-title">Indicaciones y Tratamiento</div>
+        <div class="section-content">{{indicaciones}}</div>
       </div>
 
     </div>
@@ -408,7 +473,7 @@ class PDFService {
     <!-- FIRMA -->
     <div class="signature">
       <div class="signature-line"></div>
-      <div style="font-weight:bold;">{{doctor.name}}</div>
+      <div class="signature-name">{{doctor.name}}</div>
     </div>
 
     <!-- FOOTER -->
@@ -427,6 +492,7 @@ class PDFService {
    * Template 2 - Blue Professional (Azul profesional)
    */
   getTemplate2() {
+    const watermarkSrc = this.watermarkSVGs.svg2;
     return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -441,101 +507,97 @@ class PDFService {
     }
 
     body {
-      font-family: Arial, sans-serif;
-      color: #333;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: #3a3f4d;
       background: #fff;
+      letter-spacing: -0.01em;
     }
 
     .page {
       width: 287mm;
       height: auto;
       max-height: 200mm;
-      padding: 5mm;
+      padding: 6mm;
       margin: 0 auto;
       position: relative;
+      border-left: 4px solid #3eb8c4;
     }
 
     .header {
-      border: 3px solid #1e40af;
-      border-radius: 8px;
-      margin-bottom: 5px;
+      margin-bottom: 4mm;
       display: flex;
-      min-height: 85px;
+      align-items: center;
+      gap: 15px;
+      padding-bottom: 3mm;
+      border-bottom: 1px solid #e5e6e8;
     }
 
     .header-logo {
-      width: 25%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px;
+      width: 100px;
+      height: 100px;
+      flex-shrink: 0;
     }
 
     .header-logo img {
-      max-width: 100%;
-      max-height: 100%;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
     }
 
     .header-info {
-      width: 75%;
-      padding: 10px 15px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
+      flex: 1;
+      text-align: center;
     }
 
     .consultorio-name {
-      padding-left: 30px;
-      text-align: left;
-      font-size: 20px;
-      font-weight: bold;
-      color: #1e40af;
-      text-transform: uppercase;
-      line-height: 1.2;
+      font-size: 18px;
+      font-weight: 600;
+      color: #3a3f4d;
       margin-bottom: 4px;
+      letter-spacing: -0.02em;
     }
 
     .doctor-name {
-      padding-left: 30px;
-      text-align: left;
-      font-size: 18px;
-      font-style: italic;
-      color: #3b82f6;
-      margin-bottom: 4px;
+      font-size: 15px;
+      font-weight: 500;
+      color: #3eb8c4;
+      margin-bottom: 6px;
     }
 
     .consultorio-description {
-      padding-left: 30px;
-      text-align: left;
       font-size: 11px;
-      color: #666;
+      color: #9ca3af;
       margin-bottom: 3px;
+      line-height: 1.5;
     }
 
     .specialty {
-      padding-left: 30px;
-      text-align: left;
-      font-size: 12px;
-      color: #666;
+      font-size: 10px;
+      color: #9ca3af;
     }
 
     .patient-section {
-      padding: 5px 0;
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 3px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 4mm;
+      padding: 3mm;
+      background: #f9fafb;
+      border-radius: 6px;
     }
 
     .field {
-      font-size: 13px;
-      color: #1e40af;
+      font-size: 10px;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 5px;
     }
 
     .field-value {
-      border-bottom: 1px solid #000;
-      display: inline-block;
-      min-width: 200px;
+      font-size: 13px;
+      color: #3a3f4d;
+      font-weight: 500;
     }
 
     .watermark {
@@ -543,59 +605,91 @@ class PDFService {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      opacity: 0.05;
-      font-size: 120px;
+      opacity: 0.03;
+      width: 380px;
+      height: 380px;
       pointer-events: none;
     }
 
+    .watermark img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
     .content-area {
-      min-height: 35mm;
-      border: 2px solid #1e40af;
-      border-radius: 8px;
-      padding: 10px;
-      margin-bottom: 8px;
+      margin-bottom: 3mm;
+    }
+
+    .section {
+      margin-bottom: 3mm;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #3a3f4d;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .section-content {
+      font-size: 12px;
+      color: #4b5563;
+      line-height: 1.5;
     }
 
     .medicamentos-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px 5px;
+      gap: 10px;
     }
 
     .medicamento-item {
-      font-size: 13px;
-      background: #eff6ff;
-      padding: 8px;
-      border-radius: 5px;
-      line-height: 1.4;
+      font-size: 12px;
+      padding: 8px 12px;
+      border-left: 3px solid #3eb8c4;
+      background: #f9fafb;
+      line-height: 1.5;
       break-inside: avoid;
     }
 
     .medicamento-item strong {
-      color: #1e40af;
+      color: #3a3f4d;
+      font-weight: 600;
+      display: block;
+      margin-bottom: 2px;
     }
 
     .signature {
-      margin-top: 8px;
+      margin-top: 3mm;
       text-align: right;
     }
 
     .signature-line {
-      border-top: 2px solid #000;
-      width: 250px;
+      border-top: 1px solid #d1d5db;
+      width: 180px;
       margin-left: auto;
-      margin-bottom: 5px;
+      margin-bottom: 4px;
+    }
+
+    .signature-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: #3a3f4d;
     }
 
     .footer {
-      border-top: 2px solid #1e40af;
-      padding-top: 10px;
-      font-size: 11px;
-      color: #666;
+      margin-top: 3mm;
+      padding-top: 2mm;
+      border-top: 1px solid #e5e6e8;
+      font-size: 10px;
+      color: #9ca3af;
       text-align: center;
       display: flex;
       justify-content: center;
-      gap: 20px;
+      gap: 25px;
     }
 
   </style>
@@ -618,55 +712,54 @@ class PDFService {
 
     <div class="patient-section">
       <div>
-        <span class="field">Paciente: </span>
-        <span class="field-value">{{paciente.fullName}}</span>
+        <div class="field">Paciente</div>
+        <div class="field-value">{{paciente.fullName}}</div>
       </div>
       <div>
-        <span class="field">Fecha: </span>
-        <span class="field-value">{{fecha}}</span>
+        <div class="field">Edad</div>
+        <div class="field-value">{{paciente.age}} años</div>
+      </div>
+      <div>
+        <div class="field">Sexo</div>
+        <div class="field-value">{{paciente.gender}}</div>
+      </div>
+      <div>
+        <div class="field">Fecha</div>
+        <div class="field-value">{{fecha}}</div>
       </div>
     </div>
 
-    <div style="display:flex; justify-content:flex-end; margin-bottom:10px; font-size:12px; color:#666;">
-      <div style="margin-right:20px;">Edad: {{paciente.age}}</div>
-      <div>Sexo: {{paciente.gender}}</div>
+    <div class="watermark">
+      <img src="${watermarkSrc}" alt="Medical Symbol" />
     </div>
-
-    <div class="watermark">℞</div>
 
     <div class="content-area">
-      <div style="margin-bottom:5px;">
-        <div style="font-weight:bold; color:#1e40af; margin-bottom:3px;">Motivo de Consulta:</div>
-        <div style="padding:8px; background:#eff6ff; border-radius:5px; font-size:13px;">
-          {{motivo}}
-        </div>
+      <div class="section">
+        <div class="section-title">Motivo de Consulta</div>
+        <div class="section-content">{{motivo}}</div>
       </div>
 
-      <div style="margin-bottom:5px;">
-        <div style="font-weight:bold; color:#1e40af; margin-bottom:3px;">Diagnóstico:</div>
-        <div style="padding:8px; background:#eff6ff; border-radius:5px; font-size:13px;">
-          {{diagnostico}}
-        </div>
+      <div class="section">
+        <div class="section-title">Diagnóstico</div>
+        <div class="section-content">{{diagnostico}}</div>
       </div>
 
-      <div style="margin-bottom:5px;">
-        <div style="font-weight:bold; color:#1e40af; margin-bottom:3px;">Prescripción:</div>
+      <div class="section">
+        <div class="section-title">Prescripción</div>
         <div class="medicamentos-grid">
           {{medicamentos}}
         </div>
       </div>
 
-      <div>
-        <div style="font-weight:bold; color:#1e40af; margin-bottom:3px;">Indicaciones y Tratamiento:</div>
-        <div style="padding:10px; background:#eff6ff; border-radius:5px; font-size:13px;">
-          {{indicaciones}}
-        </div>
+      <div class="section">
+        <div class="section-title">Indicaciones y Tratamiento</div>
+        <div class="section-content">{{indicaciones}}</div>
       </div>
     </div>
 
     <div class="signature">
       <div class="signature-line"></div>
-      <div style="font-weight:bold;">{{doctor.name}}</div>
+      <div class="signature-name">{{doctor.name}}</div>
     </div>
 
     <div class="footer">
@@ -681,9 +774,10 @@ class PDFService {
   }
 
   /**
-   * Template 3 - Black & Gray Professional (Negro y gris profesional)
+   * Template 3 - Dark Mode Style (Estilo modo oscuro)
    */
   getTemplate3() {
+    const watermarkSrc = this.watermarkSVGs.svg1;
     return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -698,678 +792,179 @@ class PDFService {
     }
 
     body {
-      font-family: Arial, sans-serif;
-      color: #333;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: #3a3f4d;
       background: #fff;
+      letter-spacing: -0.01em;
     }
 
     .page {
       width: 287mm;
       height: auto;
       max-height: 200mm;
-      padding: 5mm;
+      padding: 8mm;
       margin: 0 auto;
       position: relative;
+      border-left: 4px solid #4dd4e0;
     }
 
     .header {
-      border: 3px solid #1f2937;
-      border-radius: 8px;
-      margin-bottom: 5px;
+      margin-bottom: 8mm;
       display: flex;
-      min-height: 85px;
+      align-items: center;
+      gap: 20px;
+      padding-bottom: 6mm;
+      border-bottom: 1px solid #e5e6e8;
     }
 
     .header-logo {
-      width: 25%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px;
+      width: 80px;
+      height: 80px;
+      flex-shrink: 0;
     }
 
     .header-logo img {
-      max-width: 100%;
-      max-height: 100%;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
     }
 
     .header-info {
-      width: 75%;
-      padding: 10px 15px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
+      flex: 1;
     }
 
     .consultorio-name {
-      padding-left: 30px;
-      text-align: left;
-      font-size: 20px;
-      font-weight: bold;
-      color: #1f2937;
-      text-transform: uppercase;
-      line-height: 1.2;
+      font-size: 18px;
+      font-weight: 600;
+      color: #3a3f4d;
       margin-bottom: 4px;
+      letter-spacing: -0.02em;
     }
 
     .doctor-name {
-      padding-left: 30px;
-      text-align: left;
-      font-size: 18px;
-      font-style: italic;
+      font-size: 15px;
+      font-weight: 500;
+      color: #4dd4e0;
+      margin-bottom: 6px;
+    }
+
+    .consultorio-description {
+      font-size: 11px;
+      color: #6b7280;
+      margin-bottom: 2px;
+      line-height: 1.4;
+    }
+
+    .specialty {
+      font-size: 10px;
+      color: #9ca3af;
+    }
+
+    .patient-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 8mm;
+      padding: 4mm;
+      background: #f9fafb;
+      border-radius: 6px;
+    }
+
+    .field {
+      font-size: 11px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+
+    .field-value {
+      font-size: 13px;
+      color: #3a3f4d;
+      font-weight: 500;
+    }
+
+    .watermark {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0.04;
+      width: 350px;
+      height: 350px;
+      pointer-events: none;
+    }
+
+    .watermark img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .content-area {
+      margin-bottom: 6mm;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #3a3f4d;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .section-content {
+      font-size: 12px;
       color: #4b5563;
-      margin-bottom: 4px;
-    }
-
-    .consultorio-description {
-      padding-left: 30px;
-      text-align: left;
-      font-size: 11px;
-      color: #666;
-      margin-bottom: 3px;
-    }
-
-    .specialty {
-      padding-left: 30px;
-      text-align: left;
-      font-size: 12px;
-      color: #666;
-    }
-
-    .patient-section {
-      padding: 5px 0;
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 3px;
-    }
-
-    .field {
-      font-size: 13px;
-      color: #1f2937;
-    }
-
-    .field-value {
-      border-bottom: 1px solid #000;
-      display: inline-block;
-      min-width: 200px;
-    }
-
-    .watermark {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      opacity: 0.05;
-      font-size: 120px;
-      pointer-events: none;
-    }
-
-    .content-area {
-      min-height: 35mm;
-      border: 2px solid #1f2937;
-      border-radius: 8px;
-      padding: 10px;
-      margin-bottom: 8px;
+      line-height: 1.6;
+      margin-bottom: 5mm;
     }
 
     .medicamentos-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px 5px;
+      gap: 8px;
     }
 
     .medicamento-item {
-      font-size: 13px;
-      background: #f3f4f6;
-      padding: 8px;
-      border-radius: 5px;
-      line-height: 1.4;
+      font-size: 12px;
+      padding: 8px 12px;
+      border-left: 3px solid #4dd4e0;
+      background: #f9fafb;
+      line-height: 1.5;
       break-inside: avoid;
     }
 
     .medicamento-item strong {
-      color: #1f2937;
-    }
-
-    .signature {
-      margin-top: 8px;
-      text-align: right;
-    }
-
-    .signature-line {
-      border-top: 2px solid #000;
-      width: 250px;
-      margin-left: auto;
-      margin-bottom: 5px;
-    }
-
-    .footer {
-      border-top: 2px solid #1f2937;
-      padding-top: 10px;
-      font-size: 11px;
-      color: #666;
-      text-align: center;
-      display: flex;
-      justify-content: center;
-      gap: 20px;
-    }
-
-  </style>
-</head>
-
-<body>
-  <div class="page">
-
-    <div class="header">
-      <div class="header-logo">
-        <img src="{{consultorio.imageUrl}}" alt="Logo" />
-      </div>
-      <div class="header-info">
-        <div class="consultorio-name">{{consultorio.name}}</div>
-        <div class="doctor-name">{{doctor.name}}</div>
-        <div class="consultorio-description">{{consultorio.description}}</div>
-        <div class="specialty">{{doctor.cedulas}}</div>
-      </div>
-    </div>
-
-    <div class="patient-section">
-      <div>
-        <span class="field">Paciente: </span>
-        <span class="field-value">{{paciente.fullName}}</span>
-      </div>
-      <div>
-        <span class="field">Fecha: </span>
-        <span class="field-value">{{fecha}}</span>
-      </div>
-    </div>
-
-    <div style="display:flex; justify-content:flex-end; margin-bottom:10px; font-size:12px; color:#666;">
-      <div style="margin-right:20px;">Edad: {{paciente.age}}</div>
-      <div>Sexo: {{paciente.gender}}</div>
-    </div>
-
-    <div class="watermark">℞</div>
-
-    <div class="content-area">
-      <div style="margin-bottom:5px;">
-        <div style="font-weight:bold; color:#1f2937; margin-bottom:3px;">Motivo de Consulta:</div>
-        <div style="padding:8px; background:#f3f4f6; border-radius:5px; font-size:13px;">
-          {{motivo}}
-        </div>
-      </div>
-
-      <div style="margin-bottom:5px;">
-        <div style="font-weight:bold; color:#1f2937; margin-bottom:3px;">Diagnóstico:</div>
-        <div style="padding:8px; background:#f3f4f6; border-radius:5px; font-size:13px;">
-          {{diagnostico}}
-        </div>
-      </div>
-
-      <div style="margin-bottom:5px;">
-        <div style="font-weight:bold; color:#1f2937; margin-bottom:3px;">Prescripción:</div>
-        <div class="medicamentos-grid">
-          {{medicamentos}}
-        </div>
-      </div>
-
-      <div>
-        <div style="font-weight:bold; color:#1f2937; margin-bottom:3px;">Indicaciones y Tratamiento:</div>
-        <div style="padding:10px; background:#f3f4f6; border-radius:5px; font-size:13px;">
-          {{indicaciones}}
-        </div>
-      </div>
-    </div>
-
-    <div class="signature">
-      <div class="signature-line"></div>
-      <div style="font-weight:bold;">{{doctor.name}}</div>
-    </div>
-
-    <div class="footer">
-      <div>{{consultorio.address}}</div>
-      <div>Tel: {{consultorio.phone}}</div>
-    </div>
-
-  </div>
-</body>
-</html>
-`;
-  }
-
-  /**
-   * Template 4 - Red Professional (Rojo profesional)
-   */
-  getTemplate4() {
-    return `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>Receta Médica</title>
-
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: Arial, sans-serif;
-      color: #333;
-      background: #fff;
-    }
-
-    .page {
-      width: 287mm;
-      height: auto;
-      max-height: 200mm;
-      padding: 5mm;
-      margin: 0 auto;
-      position: relative;
-    }
-
-    .header {
-      border: 3px solid #dc2626;
-      border-radius: 8px;
-      margin-bottom: 5px;
-      display: flex;
-      min-height: 85px;
-    }
-
-    .header-logo {
-      width: 25%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px;
-    }
-
-    .header-logo img {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-    }
-
-    .header-info {
-      width: 75%;
-      padding: 10px 15px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-
-    .consultorio-name {
-      padding-left: 30px;
-      text-align: left;
-      font-size: 20px;
-      font-weight: bold;
-      color: #dc2626;
-      text-transform: uppercase;
-      line-height: 1.2;
-      margin-bottom: 4px;
-    }
-
-    .doctor-name {
-      padding-left: 30px;
-      text-align: left;
-      font-size: 18px;
-      font-style: italic;
-      color: #ef4444;
-      margin-bottom: 4px;
-    }
-
-    .consultorio-description {
-      padding-left: 30px;
-      text-align: left;
-      font-size: 11px;
-      color: #666;
-      margin-bottom: 3px;
-    }
-
-    .specialty {
-      padding-left: 30px;
-      text-align: left;
-      font-size: 12px;
-      color: #666;
-    }
-
-    .patient-section {
-      padding: 5px 0;
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 3px;
-    }
-
-    .field {
-      font-size: 13px;
-      color: #dc2626;
-    }
-
-    .field-value {
-      border-bottom: 1px solid #000;
-      display: inline-block;
-      min-width: 200px;
-    }
-
-    .watermark {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      opacity: 0.05;
-      font-size: 120px;
-      pointer-events: none;
-    }
-
-    .content-area {
-      min-height: 35mm;
-      border: 2px solid #dc2626;
-      border-radius: 8px;
-      padding: 10px;
-      margin-bottom: 8px;
-    }
-
-    .medicamentos-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px 5px;
-    }
-
-    .medicamento-item {
-      font-size: 13px;
-      background: #fee2e2;
-      padding: 8px;
-      border-radius: 5px;
-      line-height: 1.4;
-      break-inside: avoid;
-    }
-
-    .medicamento-item strong {
-      color: #dc2626;
-    }
-
-    .signature {
-      margin-top: 8px;
-      text-align: right;
-    }
-
-    .signature-line {
-      border-top: 2px solid #000;
-      width: 250px;
-      margin-left: auto;
-      margin-bottom: 5px;
-    }
-
-    .footer {
-      border-top: 2px solid #dc2626;
-      padding-top: 10px;
-      font-size: 11px;
-      color: #666;
-      text-align: center;
-      display: flex;
-      justify-content: center;
-      gap: 20px;
-    }
-
-  </style>
-</head>
-
-<body>
-  <div class="page">
-
-    <div class="header">
-      <div class="header-logo">
-        <img src="{{consultorio.imageUrl}}" alt="Logo" />
-      </div>
-      <div class="header-info">
-        <div class="consultorio-name">{{consultorio.name}}</div>
-        <div class="doctor-name">{{doctor.name}}</div>
-        <div class="consultorio-description">{{consultorio.description}}</div>
-        <div class="specialty">{{doctor.cedulas}}</div>
-      </div>
-    </div>
-
-    <div class="patient-section">
-      <div>
-        <span class="field">Paciente: </span>
-        <span class="field-value">{{paciente.fullName}}</span>
-      </div>
-      <div>
-        <span class="field">Fecha: </span>
-        <span class="field-value">{{fecha}}</span>
-      </div>
-    </div>
-
-    <div style="display:flex; justify-content:flex-end; margin-bottom:10px; font-size:12px; color:#666;">
-      <div style="margin-right:20px;">Edad: {{paciente.age}}</div>
-      <div>Sexo: {{paciente.gender}}</div>
-    </div>
-
-    <div class="watermark">℞</div>
-
-    <div class="content-area">
-      <div style="margin-bottom:5px;">
-        <div style="font-weight:bold; color:#dc2626; margin-bottom:3px;">Motivo de Consulta:</div>
-        <div style="padding:8px; background:#fee2e2; border-radius:5px; font-size:13px;">
-          {{motivo}}
-        </div>
-      </div>
-
-      <div style="margin-bottom:5px;">
-        <div style="font-weight:bold; color:#dc2626; margin-bottom:3px;">Diagnóstico:</div>
-        <div style="padding:8px; background:#fee2e2; border-radius:5px; font-size:13px;">
-          {{diagnostico}}
-        </div>
-      </div>
-
-      <div style="margin-bottom:5px;">
-        <div style="font-weight:bold; color:#dc2626; margin-bottom:3px;">Prescripción:</div>
-        <div class="medicamentos-grid">
-          {{medicamentos}}
-        </div>
-      </div>
-
-      <div>
-        <div style="font-weight:bold; color:#dc2626; margin-bottom:3px;">Indicaciones y Tratamiento:</div>
-        <div style="padding:10px; background:#fee2e2; border-radius:5px; font-size:13px;">
-          {{indicaciones}}
-        </div>
-      </div>
-    </div>
-
-    <div class="signature">
-      <div class="signature-line"></div>
-      <div style="font-weight:bold;">{{doctor.name}}</div>
-    </div>
-
-    <div class="footer">
-      <div>{{consultorio.address}}</div>
-      <div>Tel: {{consultorio.phone}}</div>
-    </div>
-
-  </div>
-</body>
-</html>
-`;
-  }
-
-  /**
-   * Template 5 - Modern Gradient (Gradiente moderno)
-   */
-  getTemplate5() {
-    return `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>Receta Médica</title>
-
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: Arial, sans-serif;
-      color: #333;
-      background: #fff;
-    }
-
-    .page {
-      width: 287mm;
-      height: auto;
-      max-height: 200mm;
-      padding: 5mm;
-      margin: 0 auto;
-      position: relative;
-    }
-
-    .header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border-radius: 8px;
-      margin-bottom: 5px;
-      display: flex;
-      min-height: 85px;
-      color: white;
-    }
-
-    .header-logo {
-      width: 25%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px;
-    }
-
-    .header-logo img {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-      border-radius: 50%;
-      background: white;
-      padding: 8px;
-    }
-
-    .header-info {
-      width: 75%;
-      padding: 10px 15px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-
-    .consultorio-name {
-      padding-left: 30px;
-      text-align: left;
-      font-size: 20px;
-      font-weight: bold;
-      color: white;
-      text-transform: uppercase;
-      line-height: 1.2;
-      margin-bottom: 4px;
-    }
-
-    .doctor-name {
-      padding-left: 30px;
-      text-align: left;
-      font-size: 18px;
-      font-style: italic;
-      color: rgba(255,255,255,0.95);
-      margin-bottom: 4px;
-    }
-
-    .consultorio-description {
-      padding-left: 30px;
-      text-align: left;
-      font-size: 11px;
-      color: rgba(255,255,255,0.9);
-      margin-bottom: 3px;
-    }
-
-    .specialty {
-      padding-left: 30px;
-      text-align: left;
-      font-size: 12px;
-      color: rgba(255,255,255,0.85);
-    }
-
-    .patient-section {
-      padding: 5px 0;
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 3px;
-    }
-
-    .field {
-      font-size: 13px;
-      color: #667eea;
+      color: #3a3f4d;
       font-weight: 600;
     }
 
-    .field-value {
-      border-bottom: 1px solid #667eea;
-      display: inline-block;
-      min-width: 200px;
-    }
-
-    .watermark {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      opacity: 0.05;
-      font-size: 120px;
-      pointer-events: none;
-    }
-
-    .content-area {
-      min-height: 35mm;
-      border: 2px solid #667eea;
-      border-radius: 8px;
-      padding: 10px;
-      margin-bottom: 8px;
-      background: linear-gradient(to bottom, #ffffff 0%, #f8f9ff 100%);
-    }
-
-    .medicamentos-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px 5px;
-    }
-
-    .medicamento-item {
-      font-size: 13px;
-      background: linear-gradient(135deg, #e0e7ff 0%, #ede9fe 100%);
-      padding: 8px;
-      border-radius: 5px;
-      line-height: 1.4;
-      break-inside: avoid;
-      border: 1px solid #c7d2fe;
-    }
-
-    .medicamento-item strong {
-      color: #5b21b6;
-    }
-
     .signature {
-      margin-top: 8px;
+      margin-top: 8mm;
       text-align: right;
     }
 
     .signature-line {
-      border-top: 2px solid #667eea;
-      width: 250px;
+      border-top: 1px solid #d1d5db;
+      width: 200px;
       margin-left: auto;
-      margin-bottom: 5px;
+      margin-bottom: 6px;
+    }
+
+    .signature-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: #3a3f4d;
     }
 
     .footer {
-      border-top: 2px solid #667eea;
-      padding-top: 10px;
-      font-size: 11px;
-      color: #666;
+      margin-top: 6mm;
+      padding-top: 4mm;
+      border-top: 1px solid #e5e6e8;
+      font-size: 10px;
+      color: #9ca3af;
       text-align: center;
       display: flex;
       justify-content: center;
@@ -1396,55 +991,613 @@ class PDFService {
 
     <div class="patient-section">
       <div>
-        <span class="field">Paciente: </span>
-        <span class="field-value">{{paciente.fullName}}</span>
+        <div class="field">Paciente</div>
+        <div class="field-value">{{paciente.fullName}}</div>
       </div>
       <div>
-        <span class="field">Fecha: </span>
-        <span class="field-value">{{fecha}}</span>
+        <div class="field">Edad</div>
+        <div class="field-value">{{paciente.age}} años</div>
+      </div>
+      <div>
+        <div class="field">Sexo</div>
+        <div class="field-value">{{paciente.gender}}</div>
+      </div>
+      <div>
+        <div class="field">Fecha</div>
+        <div class="field-value">{{fecha}}</div>
       </div>
     </div>
 
-    <div style="display:flex; justify-content:flex-end; margin-bottom:10px; font-size:12px; color:#666;">
-      <div style="margin-right:20px;">Edad: {{paciente.age}}</div>
-      <div>Sexo: {{paciente.gender}}</div>
+    <div class="watermark">
+      <img src="${watermarkSrc}" alt="Medical Symbol" />
     </div>
-
-    <div class="watermark">℞</div>
 
     <div class="content-area">
-      <div style="margin-bottom:5px;">
-        <div style="font-weight:bold; color:#667eea; margin-bottom:3px;">Motivo de Consulta:</div>
-        <div style="padding:8px; background:white; border-radius:5px; font-size:13px; border:1px solid #e0e7ff;">
-          {{motivo}}
-        </div>
+      <div class="section">
+        <div class="section-title">Motivo de Consulta</div>
+        <div class="section-content">{{motivo}}</div>
       </div>
 
-      <div style="margin-bottom:5px;">
-        <div style="font-weight:bold; color:#667eea; margin-bottom:3px;">Diagnóstico:</div>
-        <div style="padding:8px; background:white; border-radius:5px; font-size:13px; border:1px solid #e0e7ff;">
-          {{diagnostico}}
-        </div>
+      <div class="section">
+        <div class="section-title">Diagnóstico</div>
+        <div class="section-content">{{diagnostico}}</div>
       </div>
 
-      <div style="margin-bottom:5px;">
-        <div style="font-weight:bold; color:#667eea; margin-bottom:3px;">Prescripción:</div>
+      <div class="section">
+        <div class="section-title">Prescripción</div>
         <div class="medicamentos-grid">
           {{medicamentos}}
         </div>
       </div>
 
-      <div>
-        <div style="font-weight:bold; color:#667eea; margin-bottom:3px;">Indicaciones y Tratamiento:</div>
-        <div style="padding:10px; background:white; border-radius:5px; font-size:13px; border:1px solid #e0e7ff;">
-          {{indicaciones}}
-        </div>
+      <div class="section">
+        <div class="section-title">Indicaciones y Tratamiento</div>
+        <div class="section-content">{{indicaciones}}</div>
       </div>
     </div>
 
     <div class="signature">
       <div class="signature-line"></div>
-      <div style="font-weight:bold; color:#667eea;">{{doctor.name}}</div>
+      <div class="signature-name">{{doctor.name}}</div>
+    </div>
+
+    <div class="footer">
+      <div>{{consultorio.address}}</div>
+      <div>Tel: {{consultorio.phone}}</div>
+    </div>
+
+  </div>
+</body>
+</html>
+`;
+  }
+
+  /**
+   * Template 4 - Subtle Borders (Bordes sutiles)
+   */
+  getTemplate4() {
+    const watermarkSrc = this.watermarkSVGs.svg2;
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Receta Médica</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: #3a3f4d;
+      background: #fff;
+      letter-spacing: -0.01em;
+    }
+
+    .page {
+      width: 287mm;
+      height: auto;
+      max-height: 200mm;
+      padding: 5mm;
+      margin: 0 auto;
+      position: relative;
+      border: 1px solid #e5e6e8;
+      border-radius: 8px;
+    }
+
+    .header {
+      margin-bottom: 3mm;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding-bottom: 2mm;
+      border-bottom: 1px solid #e5e6e8;
+    }
+
+    .header-logo {
+      width: 70px;
+      height: 70px;
+      flex-shrink: 0;
+    }
+
+    .header-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .header-info {
+      flex: 1;
+    }
+
+    .consultorio-name {
+      font-size: 17px;
+      font-weight: 600;
+      color: #3a3f4d;
+      margin-bottom: 5px;
+      letter-spacing: -0.02em;
+    }
+
+    .doctor-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: #6b7280;
+      margin-bottom: 6px;
+    }
+
+    .consultorio-description {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-bottom: 2px;
+      line-height: 1.4;
+    }
+
+    .specialty {
+      font-size: 10px;
+      color: #9ca3af;
+    }
+
+    .patient-section {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 3mm;
+      padding: 2mm 0;
+    }
+
+    .field {
+      font-size: 10px;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+
+    .field-value {
+      font-size: 13px;
+      color: #3a3f4d;
+      font-weight: 500;
+    }
+
+    .watermark {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0.03;
+      width: 370px;
+      height: 370px;
+      pointer-events: none;
+    }
+
+    .watermark img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .content-area {
+      margin-bottom: 2mm;
+    }
+
+    .section {
+      margin-bottom: 2mm;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #6b7280;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .section-content {
+      font-size: 12px;
+      color: #4b5563;
+      line-height: 1.4;
+    }
+
+    .medicamentos-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .medicamento-item {
+      font-size: 12px;
+      padding: 4px 0;
+      line-height: 1.4;
+      break-inside: avoid;
+    }
+
+    .medicamento-item strong {
+      color: #3a3f4d;
+      font-weight: 600;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .signature {
+      margin-top: 2mm;
+      text-align: right;
+    }
+
+    .signature-line {
+      border-top: 1px solid #d1d5db;
+      width: 180px;
+      margin-left: auto;
+      margin-bottom: 4px;
+    }
+
+    .signature-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: #3a3f4d;
+    }
+
+    .footer {
+      margin-top: 2mm;
+      padding-top: 2mm;
+      border-top: 1px solid #e5e6e8;
+      font-size: 10px;
+      color: #9ca3af;
+      text-align: center;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+    }
+
+  </style>
+</head>
+
+<body>
+  <div class="page">
+
+    <div class="header">
+      <div class="header-logo">
+        <img src="{{consultorio.imageUrl}}" alt="Logo" />
+      </div>
+      <div class="header-info">
+        <div class="consultorio-name">{{consultorio.name}}</div>
+        <div class="doctor-name">{{doctor.name}}</div>
+        <div class="consultorio-description">{{consultorio.description}}</div>
+        <div class="specialty">{{doctor.cedulas}}</div>
+      </div>
+    </div>
+
+    <div class="patient-section">
+      <div>
+        <div class="field">Paciente</div>
+        <div class="field-value">{{paciente.fullName}}</div>
+      </div>
+      <div>
+        <div class="field">Edad</div>
+        <div class="field-value">{{paciente.age}} años</div>
+      </div>
+      <div>
+        <div class="field">Sexo</div>
+        <div class="field-value">{{paciente.gender}}</div>
+      </div>
+      <div>
+        <div class="field">Fecha</div>
+        <div class="field-value">{{fecha}}</div>
+      </div>
+    </div>
+
+    <div class="watermark">
+      <img src="${watermarkSrc}" alt="Medical Symbol" />
+    </div>
+
+    <div class="content-area">
+      <div class="section">
+        <div class="section-title">Motivo de Consulta</div>
+        <div class="section-content">{{motivo}}</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Diagnóstico</div>
+        <div class="section-content">{{diagnostico}}</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Prescripción</div>
+        <div class="medicamentos-grid">
+          {{medicamentos}}
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Indicaciones y Tratamiento</div>
+        <div class="section-content">{{indicaciones}}</div>
+      </div>
+    </div>
+
+    <div class="signature">
+      <div class="signature-line"></div>
+      <div class="signature-name">{{doctor.name}}</div>
+    </div>
+
+    <div class="footer">
+      <div>{{consultorio.address}}</div>
+      <div>Tel: {{consultorio.phone}}</div>
+    </div>
+
+  </div>
+</body>
+</html>
+`;
+  }
+
+  /**
+   * Template 5 - Ultra Minimalist (Ultra minimalista)
+   */
+  getTemplate5() {
+    const watermarkSrc = this.watermarkSVGs.svg3;
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Receta Médica</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: #3a3f4d;
+      background: #fff;
+      letter-spacing: -0.01em;
+    }
+
+    .page {
+      width: 287mm;
+      height: auto;
+      max-height: 200mm;
+      padding: 5mm;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .header {
+      margin-bottom: 3mm;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .header-logo {
+      width: 65px;
+      height: 65px;
+      flex-shrink: 0;
+    }
+
+    .header-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .header-info {
+      flex: 1;
+    }
+
+    .consultorio-name {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 4px;
+      letter-spacing: -0.03em;
+    }
+
+    .doctor-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: #6b7280;
+      margin-bottom: 6px;
+    }
+
+    .consultorio-description {
+      font-size: 11px;
+      color: #9ca3af;
+      line-height: 1.5;
+      margin-bottom: 2px;
+    }
+
+    .specialty {
+      font-size: 10px;
+      color: #9ca3af;
+    }
+
+    .patient-section {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 3mm;
+      padding-bottom: 2mm;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .field {
+      font-size: 9px;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+
+    .field-value {
+      font-size: 14px;
+      color: #1f2937;
+      font-weight: 500;
+    }
+
+    .watermark {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0.02;
+      width: 400px;
+      height: 400px;
+      pointer-events: none;
+    }
+
+    .watermark img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .content-area {
+      margin-bottom: 2mm;
+    }
+
+    .section {
+      margin-bottom: 2mm;
+    }
+
+    .section-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: #9ca3af;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .section-content {
+      font-size: 13px;
+      color: #374151;
+      line-height: 1.5;
+    }
+
+    .medicamentos-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .medicamento-item {
+      font-size: 12px;
+      padding: 4px 0;
+      line-height: 1.5;
+      break-inside: avoid;
+    }
+
+    .medicamento-item strong {
+      color: #1f2937;
+      font-weight: 600;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .signature {
+      margin-top: 2mm;
+      text-align: right;
+    }
+
+    .signature-line {
+      border-top: 1px solid #e5e7eb;
+      width: 160px;
+      margin-left: auto;
+      margin-bottom: 4px;
+    }
+
+    .signature-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: #1f2937;
+    }
+
+    .footer {
+      margin-top: 2mm;
+      padding-top: 2mm;
+      border-top: 1px solid #f3f4f6;
+      font-size: 10px;
+      color: #9ca3af;
+      text-align: center;
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+    }
+
+  </style>
+</head>
+
+<body>
+  <div class="page">
+
+    <div class="header">
+      <div class="header-logo">
+        <img src="{{consultorio.imageUrl}}" alt="Logo" />
+      </div>
+      <div class="header-info">
+        <div class="consultorio-name">{{consultorio.name}}</div>
+        <div class="doctor-name">{{doctor.name}}</div>
+        <div class="consultorio-description">{{consultorio.description}}</div>
+        <div class="specialty">{{doctor.cedulas}}</div>
+      </div>
+    </div>
+
+    <div class="patient-section">
+      <div>
+        <div class="field">Paciente</div>
+        <div class="field-value">{{paciente.fullName}}</div>
+      </div>
+      <div>
+        <div class="field">Edad</div>
+        <div class="field-value">{{paciente.age}} años</div>
+      </div>
+      <div>
+        <div class="field">Sexo</div>
+        <div class="field-value">{{paciente.gender}}</div>
+      </div>
+      <div>
+        <div class="field">Fecha</div>
+        <div class="field-value">{{fecha}}</div>
+      </div>
+    </div>
+
+    <div class="watermark">
+      <img src="${watermarkSrc}" alt="Medical Symbol" />
+    </div>
+
+    <div class="content-area">
+      <div class="section">
+        <div class="section-title">Motivo de Consulta</div>
+        <div class="section-content">{{motivo}}</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Diagnóstico</div>
+        <div class="section-content">{{diagnostico}}</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Prescripción</div>
+        <div class="medicamentos-grid">
+          {{medicamentos}}
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Indicaciones y Tratamiento</div>
+        <div class="section-content">{{indicaciones}}</div>
+      </div>
+    </div>
+
+    <div class="signature">
+      <div class="signature-line"></div>
+      <div class="signature-name">{{doctor.name}}</div>
     </div>
 
     <div class="footer">

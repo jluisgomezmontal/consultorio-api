@@ -34,3 +34,10 @@ build/
 
 # Prisma
 prisma/migrations/
+
+# Puppeteer
+.local-chromium/
+chrome-win64/
+**/.local-chromium/
+**/chrome-win64/
+.cache/
