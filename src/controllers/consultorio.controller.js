@@ -1,4 +1,5 @@
 import consultorioService from '../services/consultorio.service.js';
+import exportService from '../services/export.service.js';
 import { successResponse, createdResponse, paginatedResponse } from '../utils/response.js';
 
 class ConsultorioController {
@@ -192,6 +193,30 @@ class ConsultorioController {
       const consultorio = await consultorioService.updateAppointmentSectionsConfig(id, userId, config);
       
       return successResponse(res, consultorio, 'Appointment sections configuration updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Export consultorio data (doctor and admin only)
+   */
+  async exportData(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { format = 'json' } = req.query;
+      const userId = req.user.id;
+
+      const result = await exportService.exportConsultorioData(id, userId, format);
+
+      if (format === 'json') {
+        res.setHeader('Content-Type', 'application/json');
+        return res.json(result.data);
+      } else {
+        res.setHeader('Content-Type', result.contentType);
+        res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+        return res.send(result.data);
+      }
     } catch (error) {
       next(error);
     }

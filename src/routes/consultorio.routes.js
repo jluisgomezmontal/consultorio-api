@@ -47,6 +47,9 @@ router.get('/:id/appointment-sections-config', validate(getConsultorioSchema), c
 // Update appointment sections configuration (doctor only)
 router.put('/:id/appointment-sections-config', authorize('doctor'), consultorioController.updateAppointmentSectionsConfig);
 
+// Export consultorio data (doctor and admin only)
+router.get('/:id/export', authorize('doctor', 'admin'), validate(getConsultorioSchema), consultorioController.exportData);
+
 // Create consultorio (admin only)
 router.post('/', authorize('admin'), validate(createConsultorioSchema), consultorioController.createConsultorio);
 
