@@ -14,6 +14,7 @@ import paqueteRoutes from './paquete.routes.js';
 import recetaRoutes from './receta.routes.js';
 import stripeRoutes from './stripe.routes.js';
 import medicationAllergyRoutes from './medicationAllergy.routes.js';
+import aiRoutes from './ai.routes.js';
 
 const router = Router();
 
@@ -41,5 +42,6 @@ router.use('/recetas', recetaRoutes);
 router.use('/reportes', reporteRoutes);
 router.use('/pagos', pagoRoutes);
 router.use('/medication-allergies', medicationAllergyRoutes);
+router.use('/ai', aiRoutes);
 
 export default router;
