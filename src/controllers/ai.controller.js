@@ -15,24 +15,22 @@ class AIController {
       let pacienteInfo = {};
 
       if (pacienteId) {
-        const paciente = await Paciente.findById(pacienteId).select(
-          'dateOfBirth weight medicationAllergies medicalHistory'
-        );
+        const paciente = await Paciente.findById(pacienteId)
+          .select('birthDate age medicationAllergies medicalHistory allergies, gender')
+          .populate('medicationAllergies', 'name activeIngredient');
 
         if (paciente) {
-          if (paciente.dateOfBirth) {
+          if (paciente.birthDate) {
             const today = new Date();
-            const birthDate = new Date(paciente.dateOfBirth);
+            const birthDate = new Date(paciente.birthDate);
             let edad = today.getFullYear() - birthDate.getFullYear();
             const monthDiff = today.getMonth() - birthDate.getMonth();
             if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
               edad--;
             }
             pacienteInfo.edad = edad;
-          }
-
-          if (paciente.weight) {
-            pacienteInfo.peso = paciente.weight;
+          } else if (paciente.age) {
+            pacienteInfo.edad = paciente.age;
           }
 
           if (paciente.medicationAllergies && paciente.medicationAllergies.length > 0) {
@@ -41,8 +39,18 @@ class AIController {
             ).filter(Boolean);
           }
 
-          if (paciente.medicalHistory && paciente.medicalHistory.chronicDiseases) {
-            pacienteInfo.condicionesPreexistentes = paciente.medicalHistory.chronicDiseases;
+          if (paciente.medicalHistory && paciente.medicalHistory.trim() !== '') {
+            pacienteInfo.condicionesPreexistentes = [paciente.medicalHistory];
+          }
+          if (paciente.gender && paciente.gender.trim() !== '') {
+            pacienteInfo.genero = [paciente.gender];
+          }
+
+          if (paciente.allergies && paciente.allergies.trim() !== '') {
+            if (!pacienteInfo.alergias) {
+              pacienteInfo.alergias = [];
+            }
+            pacienteInfo.alergias.push(paciente.allergies);
           }
         }
       }

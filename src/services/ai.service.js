@@ -16,7 +16,7 @@ class AIService {
     }
 
     const prompt = this.buildPrompt(diagnostico, pacienteInfo);
-
+    // console.log(prompt)
     try {
       const response = await fetch(this.apiUrl, {
         method: 'POST',
@@ -71,11 +71,15 @@ class AIService {
   }
 
   buildPrompt(diagnostico, pacienteInfo) {
-    const { edad, peso, alergias, condicionesPreexistentes } = pacienteInfo;
+    // console.log({pacienteInfo})
+    const { edad, peso, alergias, genero } = pacienteInfo;
 
     let prompt = `Basándote en el siguiente diagnóstico médico, proporciona un plan de tratamiento y lista de medicamentos apropiados.\n\n`;
     prompt += `**Diagnóstico:** ${diagnostico}\n\n`;
 
+    if (genero) {
+      prompt += `**Genero del paciente:** ${genero}\n`;
+    }
     if (edad) {
       prompt += `**Edad del paciente:** ${edad} años\n`;
     }
@@ -87,10 +91,6 @@ class AIService {
     if (alergias && alergias.length > 0) {
       prompt += `**Alergias medicamentosas:** ${alergias.join(', ')}\n`;
       prompt += `⚠️ IMPORTANTE: NO sugieras medicamentos que contengan estos componentes o sus derivados.\n`;
-    }
-
-    if (condicionesPreexistentes && condicionesPreexistentes.length > 0) {
-      prompt += `**Condiciones preexistentes:** ${condicionesPreexistentes.join(', ')}\n`;
     }
 
     prompt += `\nResponde ÚNICAMENTE con un objeto JSON válido con la siguiente estructura exacta:\n`;
