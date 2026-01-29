@@ -43,7 +43,7 @@ class AIController {
             pacienteInfo.condicionesPreexistentes = [paciente.medicalHistory];
           }
           if (paciente.gender && paciente.gender.trim() !== '') {
-            pacienteInfo.genero = [paciente.gender];
+            pacienteInfo.genero = paciente.gender;
           }
 
           if (paciente.allergies && paciente.allergies.trim() !== '') {
